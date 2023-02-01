@@ -25,7 +25,7 @@ int main(int argc, char** argv){
     spinner.start();
     
     // MOVEIT planning setups
-    static const std::string PLANNING_GROUP_ARM = "ur5_arm";
+    static const std::string PLANNING_GROUP_ARM = "manipulator";
     moveit::planning_interface::PlanningSceneInterface planning_scene_interface;
     moveit::planning_interface::MoveGroupInterface move_group_interface_arm(PLANNING_GROUP_ARM);
     const robot_state::JointModelGroup* joint_model_group =

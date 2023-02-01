@@ -19,7 +19,7 @@ int main(int argc, char** argv){
     ros::Rate rate(1000);
 
     // moveit setups for planning
-    static const std::string PLANNING_GROUP = "ur5_arm";
+    static const std::string PLANNING_GROUP = "manipulator";
     moveit::planning_interface::MoveGroupInterface move_group(PLANNING_GROUP);
     moveit::planning_interface::MoveGroupInterface::Plan my_plan;
     const robot_state::JointModelGroup* joint_model_group = move_group.getCurrentState()->getJointModelGroup(PLANNING_GROUP);

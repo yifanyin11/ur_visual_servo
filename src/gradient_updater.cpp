@@ -186,7 +186,7 @@ void visual_servo::GradientUpdater::initialize(visual_servo::ImageCapturer& cam1
     spinner.start();
 
     // MOVEIT planning setups
-    static const std::string PLANNING_GROUP_ARM = "ur5_arm";
+    static const std::string PLANNING_GROUP_ARM = "manipulator";
     moveit::planning_interface::PlanningSceneInterface planning_scene_interface;
     moveit::planning_interface::MoveGroupInterface move_group_interface_arm(PLANNING_GROUP_ARM);
     const robot_state::JointModelGroup* joint_model_group =
@@ -196,15 +196,6 @@ void visual_servo::GradientUpdater::initialize(visual_servo::ImageCapturer& cam1
     move_group_interface_arm.setMaxVelocityScalingFactor(0.3);
     move_group_interface_arm.setMaxAccelerationScalingFactor(0.01);
     bool success;
-
-    // // Move to home position
-    // move_group_interface_arm.setJointValueTarget(move_group_interface_arm.getNamedTargetValues("home"));
-    
-    // success = (move_group_interface_arm.plan(my_plan_arm) == moveit::planning_interface::MoveItErrorCode::SUCCESS);
-
-    // ROS_INFO_NAMED("update_image_G", "Visualizing plan (pose goal) %s", success ? "" : "FAILED");
-
-    // move_group_interface_arm.move();
 
     // define points
     cv::Point tool_center1, tool_center2; 

@@ -22,7 +22,7 @@ int main(int argc, char** argv){
     spinner.start();
     ros::Rate rate(100);
 
-    static const std::string PLANNING_GROUP = "ur5_arm";
+    static const std::string PLANNING_GROUP = "manipulator";
     moveit::planning_interface::MoveGroupInterface move_group(PLANNING_GROUP);
     const robot_state::JointModelGroup* joint_model_group = move_group.getCurrentState()->getJointModelGroup(PLANNING_GROUP);
     

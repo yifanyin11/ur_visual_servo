@@ -25,8 +25,7 @@ int main(int argc, char** argv)
     ros::AsyncSpinner spinner(1);
     spinner.start();
 
-    static const std::string PLANNING_GROUP_ARM = "ur5_arm";
-    static const std::string PLANNING_GROUP_GRIPPER = "gripper";
+    static const std::string PLANNING_GROUP_ARM = "manipulator";
     
     // Planning setups
     namespace rvt = rviz_visual_tools;
@@ -43,7 +42,7 @@ int main(int argc, char** argv)
 
     moveit::planning_interface::PlanningSceneInterface planning_scene_interface;
     moveit::planning_interface::MoveGroupInterface move_group_interface_arm(PLANNING_GROUP_ARM);
-    moveit::planning_interface::MoveGroupInterface move_group_interface_gripper(PLANNING_GROUP_GRIPPER);
+
     const robot_state::JointModelGroup* joint_model_group =
             move_group_interface_arm.getCurrentState()->getJointModelGroup(PLANNING_GROUP_ARM);
 
@@ -57,30 +56,6 @@ int main(int argc, char** argv)
     move_group_interface_arm.setMaxVelocityScalingFactor(0.3);
     move_group_interface_arm.setMaxAccelerationScalingFactor(0.01);
     
-    // 1. Move to home position
-    move_group_interface_arm.setJointValueTarget(move_group_interface_arm.getNamedTargetValues("home"));
-    
-    bool success = (move_group_interface_arm.plan(my_plan_arm) == moveit::planning_interface::MoveItErrorCode::SUCCESS);
-
-    moveit_msgs::RobotTrajectory trajectory_msg = my_plan_arm.trajectory_;
-
-    robot_trajectory::RobotTrajectory trajectory(robot_model, PLANNING_GROUP_ARM);
-
-    scene->getCurrentStateNonConst().update();
-    cur_state = scene->getCurrentStateNonConst();   
-
-    trajectory.setRobotTrajectoryMsg(cur_state, trajectory_msg);
-
-    double duration = trajectory.getWayPointDurationFromStart(trajectory.getWayPointCount()/2);
-
-    std::cout << "Duration: " << duration << std::endl;
-
-    ROS_INFO_NAMED("pick_and_place", "Visualizing plan (pose goal) %s", success ? "" : "FAILED");
-
-    move_group_interface_arm.move();
-
-    std::cout << "Done homing" << std::endl;
-
     // 2. Place the TCP to target 1 (above the blue box)
     geometry_msgs::PoseStamped current_pose;
     current_pose = move_group_interface_arm.getCurrentPose("ee_link");
