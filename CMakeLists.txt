@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.0.2)
+cmake_minimum_required(VERSION 3.4.0)
 project(ur_visual_servo)
 
 ## Compile as C++11, supported in ROS Kinetic and newer
@@ -126,19 +126,19 @@ include_directories(
 
 ## Declare a C++ library
 add_library(image_capturer src/image_capturer.cpp)
-target_link_libraries(image_capturer ${catkin_LIBRARIES} ${Boost_LIBRARIES} ${OpenCV_INCLUDE_DIRS})
+target_link_libraries(image_capturer ${catkin_LIBRARIES} ${Boost_LIBRARIES} ${OpenCV_LIBRARIES})
 
 add_library(tool_detector src/tool_detector.cpp)
-target_link_libraries(tool_detector ${catkin_LIBRARIES} ${Boost_LIBRARIES} ${OpenCV_INCLUDE_DIRS})
+target_link_libraries(tool_detector ${catkin_LIBRARIES} ${Boost_LIBRARIES} ${OpenCV_LIBRARIES})
 
 add_library(Jacobian_updater src/Jacobian_updater.cpp)
-target_link_libraries(Jacobian_updater ${catkin_LIBRARIES} ${Boost_LIBRARIES} ${OpenCV_INCLUDE_DIRS})
+target_link_libraries(Jacobian_updater ${catkin_LIBRARIES} ${Boost_LIBRARIES} ${OpenCV_LIBRARIES})
 
 add_library(gradient_updater src/gradient_updater.cpp)
-target_link_libraries(gradient_updater ${catkin_LIBRARIES} ${Boost_LIBRARIES} ${OpenCV_INCLUDE_DIRS})
+target_link_libraries(gradient_updater ${catkin_LIBRARIES} ${Boost_LIBRARIES} ${OpenCV_LIBRARIES})
 
 add_library(visual_servo_controller src/visual_servo_controller.cpp)
-target_link_libraries(visual_servo_controller ${catkin_LIBRARIES} ${Boost_LIBRARIES} ${OpenCV_INCLUDE_DIRS})
+target_link_libraries(visual_servo_controller ${catkin_LIBRARIES} ${Boost_LIBRARIES} ${OpenCV_LIBRARIES})
 
 # add_library(${PROJECT_NAME}
 #   src/${PROJECT_NAME}/ur_visual_servo.cpp
@@ -154,29 +154,26 @@ target_link_libraries(set_home_position ${catkin_LIBRARIES} ${Boost_LIBRARIES} y
 add_executable(robot_homing src/robot_homing.cpp)
 target_link_libraries(robot_homing ${catkin_LIBRARIES} ${Boost_LIBRARIES} yaml-cpp)
 
-add_executable(async_move_test src/async_move_test.cpp)
-target_link_libraries(async_move_test ${catkin_LIBRARIES} ${Boost_LIBRARIES})
-
 add_executable(cv_detection_test src/cv_detection_test.cpp)
-target_link_libraries(cv_detection_test ${catkin_LIBRARIES} ${Boost_LIBRARIES})
+target_link_libraries(cv_detection_test image_capturer tool_detector ${catkin_LIBRARIES} ${Boost_LIBRARIES})
 
 add_executable(update_image_J src/update_image_J.cpp)
-target_link_libraries(update_image_J ${catkin_LIBRARIES} ${Boost_LIBRARIES})
+target_link_libraries(update_image_J image_capturer tool_detector Jacobian_updater ${catkin_LIBRARIES} ${Boost_LIBRARIES})
 
 add_executable(visual_servo_position_test src/visual_servo_position_test.cpp)
-target_link_libraries(visual_servo_position_test ${catkin_LIBRARIES} ${Boost_LIBRARIES})
+target_link_libraries(visual_servo_position_test visual_servo_controller image_capturer tool_detector ${catkin_LIBRARIES} ${Boost_LIBRARIES})
 
 add_executable(visual_servo_full_pose_test src/visual_servo_full_pose_test.cpp)
-target_link_libraries(visual_servo_full_pose_test ${catkin_LIBRARIES} ${Boost_LIBRARIES})
+target_link_libraries(visual_servo_full_pose_test visual_servo_controller image_capturer tool_detector ${catkin_LIBRARIES} ${Boost_LIBRARIES})
 
 add_executable(update_ori_gradient src/update_ori_gradient.cpp)
-target_link_libraries(update_ori_gradient ${catkin_LIBRARIES} ${Boost_LIBRARIES})
+target_link_libraries(update_ori_gradient gradient_updater image_capturer tool_detector ${catkin_LIBRARIES} ${Boost_LIBRARIES})
 
 add_executable(visual_servo_orientation_test src/visual_servo_orientation_test.cpp)
-target_link_libraries(visual_servo_orientation_test ${catkin_LIBRARIES} ${Boost_LIBRARIES})
+target_link_libraries(visual_servo_orientation_test visual_servo_controller image_capturer tool_detector ${catkin_LIBRARIES} ${Boost_LIBRARIES})
 
 add_executable(target_publisher src/target_publisher.cpp)
-target_link_libraries(target_publisher ${catkin_LIBRARIES} ${Boost_LIBRARIES})
+target_link_libraries(target_publisher image_capturer tool_detector ${catkin_LIBRARIES} ${Boost_LIBRARIES})
 
 ## Add cmake target dependencies of the executable
 ## same as for the library above

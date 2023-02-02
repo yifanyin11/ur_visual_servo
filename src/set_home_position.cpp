@@ -40,7 +40,7 @@ int main(int argc, char** argv){
     }
 
     // write to the configuration file
-    std::string path = ros::package::getPath("ur5_visual_servos");
+    std::string path = ros::package::getPath("ur_visual_servo");
     YAML::Node config = YAML::LoadFile(path+"/config/config.yaml");
     for (int i=0;i<joint_group_positions.size();++i){
         std::string name = joint_names[i];

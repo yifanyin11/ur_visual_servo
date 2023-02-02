@@ -3,8 +3,8 @@
 #include <vector>
 #include <iostream>
 #include <fstream>
-#include "image_capturer.cpp"
-#include "tool_detector.cpp"
+#include "image_capturer.hpp"
+#include "tool_detector.hpp"
 
 int main(int argc, char** argv){
     // ros setups

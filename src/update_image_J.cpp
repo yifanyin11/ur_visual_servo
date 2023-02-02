@@ -1,7 +1,7 @@
 #include <ros/ros.h>
-#include "Jacobian_updater.cpp"
-#include "image_capturer.cpp"
-#include "tool_detector.cpp"
+#include "Jacobian_updater.hpp"
+#include "image_capturer.hpp"
+#include "tool_detector.hpp"
 
 int main(int argc, char** argv){
     ros::init(argc, argv, "update_image_J");
