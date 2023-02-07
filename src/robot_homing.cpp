@@ -29,6 +29,9 @@ int main(int argc, char** argv){
     const std::vector<std::string> joint_names = joint_model_group->getActiveJointModelNames();
     current_state->copyJointGroupPositions(joint_model_group, joint_group_positions);
 
+    move_group.setMaxVelocityScalingFactor(0.02);
+    move_group.setMaxAccelerationScalingFactor(0.01);
+
     // get ros params
     for (int i=0;i<joint_group_positions.size();++i){
         std::string name = "/home_position/"+joint_names[i];

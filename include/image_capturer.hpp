@@ -17,10 +17,9 @@ namespace visual_servo{
         ros::NodeHandle nh;
         ros::Subscriber img_sub;
         std::string image_topic;
+        bool received;
     public:
         friend class ToolDetector; 
-
-        // int count;
         // constructors
         ImageCapturer(const ImageCapturer& obj) = default;
         ImageCapturer(ros::NodeHandle& nh, std::string& img_topic);
