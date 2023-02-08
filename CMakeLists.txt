@@ -140,6 +140,9 @@ target_link_libraries(gradient_updater ${catkin_LIBRARIES} ${Boost_LIBRARIES} ${
 add_library(visual_servo_controller src/visual_servo_controller.cpp)
 target_link_libraries(visual_servo_controller ${catkin_LIBRARIES} ${Boost_LIBRARIES} ${OpenCV_LIBRARIES})
 
+add_library(pixel_picker src/pixel_picker.cpp)
+target_link_libraries(pixel_picker ${catkin_LIBRARIES} ${Boost_LIBRARIES} ${OpenCV_LIBRARIES})
+
 # add_library(${PROJECT_NAME}
 #   src/${PROJECT_NAME}/ur_visual_servo.cpp
 # )

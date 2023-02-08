@@ -30,26 +30,28 @@ int main(int argc, char** argv){
 
     int count = 0;
 
-    while(nh.ok()){
-        count++;
-        detector_blue.detect(cam1);
-        cam1.saveCurrentImage("./", std::to_string(count)+".png");
-        detector_blue.drawDetectRes();
+    
 
-        // detector_target.detect(cam2);
-        // detector_target.drawDetectRes();
+    // while(nh.ok()){
+    //     count++;
+    //     detector_blue.detect(cam1);
+    //     cam1.saveCurrentImage("./", std::to_string(count)+".png");
+    //     detector_blue.drawDetectRes();
 
-        // detector_target_tip1.detect(cam1);
-        // detector_target_tip1.drawDetectRes();
-        // detector_target_tip1.detect(cam2);
-        // detector_target_tip1.drawDetectRes();
+    //     // detector_target.detect(cam2);
+    //     // detector_target.drawDetectRes();
 
-        // detector_target_tip2.detect(cam1);
-        // detector_target_tip2.drawDetectRes();
-        // detector_target_tip2.detect(cam2);
-        // detector_target_tip2.drawDetectRes();
-        rate.sleep();
-    }
+    //     // detector_target_tip1.detect(cam1);
+    //     // detector_target_tip1.drawDetectRes();
+    //     // detector_target_tip1.detect(cam2);
+    //     // detector_target_tip1.drawDetectRes();
+
+    //     // detector_target_tip2.detect(cam1);
+    //     // detector_target_tip2.drawDetectRes();
+    //     // detector_target_tip2.detect(cam2);
+    //     // detector_target_tip2.drawDetectRes();
+    //     rate.sleep();
+    // }
 
     ros::shutdown();
     return 0;
