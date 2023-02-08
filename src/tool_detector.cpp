@@ -23,7 +23,70 @@ cv::Point visual_servo::ToolDetector::getCenter(){
     return tool_center;
 }
 
-void visual_servo::ToolDetector::detect(visual_servo::ImageCapturer& cam){
+void visual_servo::ToolDetector::firstDetect(visual_servo::ImageCapturer& cam){
+    std::string input = "";
+    while(input!="y"){
+        // update source image
+        image = cam.getCurrentImage();
+        // perform detection
+        cv::Mat hsv, mask, col_sum, row_sum;
+        // convert to hsv colorspace
+        cv::cvtColor(image, hsv, cv::COLOR_BGR2HSV);
+        // find the red color within the boundaries
+        cv::inRange(hsv, lower_hsv, upper_hsv, mask);
+
+        // cv::namedWindow("mask");
+        // cv::imshow("mask", mask);
+        // cv::waitKey(0);
+        // cv::destroyAllWindows();
+
+        cv::reduce(mask, col_sum, 0, cv::REDUCE_SUM, CV_64FC1); 
+        cv::reduce(mask, row_sum, 1, cv::REDUCE_SUM, CV_64FC1); 
+        int start1, end1, start2, end2;
+        for (int i=0; i<col_sum.size[1]; ++i){
+            if (col_sum.at<double>(0,i)!=0){
+                start1 = i;
+                break;
+            }
+        }
+        for (int i=col_sum.size[1]-1; i>=0; --i){
+            if (col_sum.at<double>(0,i)!=0){
+                end1 = i;
+                break;
+            }
+        }
+        
+        for (int i=0; i<row_sum.size[0]; ++i){
+            if (row_sum.at<double>(i,0)!=0){
+                start2 = i;
+                break;
+            }
+        }
+        for (int i=row_sum.size[0]-1; i>=0; --i){
+            if (row_sum.at<double>(i,0)!=0){
+                end2 = i;
+                break;
+            }
+        }
+        tool_center.x = (start1+end1)/2.0;
+        tool_center.y = (start2+end2)/2.0;
+        corner1.x = start1;
+        corner1.y = end2;
+        corner2.x = end1;
+        corner2.y = start2;
+
+        while(nh.ok()){
+            ros::spinOnce();
+            break;
+        }
+        visual_servo::ToolDetector::drawDetectRes(image);
+        std::cout << "Confirm first detection (y/n): ";
+        std::cin >> input;
+    }
+
+}
+
+void visual_servo::ToolDetector::detect(ImageCapturer& cam){
     // update source image
     image = cam.getCurrentImage();
     // perform detection
@@ -130,6 +193,21 @@ void visual_servo::ToolDetector::detect(cv::Mat& img){
         ros::spinOnce();
         break;
     }
+}
+
+void visual_servo::ToolDetector::track(ImageCapturer& cam, double roir_width=0.25, double roir_height=0.25){
+    // update source image
+    image = cam.getCurrentImage();
+    // create a img with a fixed size | dim constraints
+    int h = image.rows, w = image.cols;
+    int roi_w = w*roir_width, roi_h = h*roir_height;
+    cv::Point roi_origin(max(tool_center.x-roi_w/2,0), max(tool_center.y-roi_h/2,0));
+    cv::Mat roi = image(cv::Range(roi_origin.x, min(tool_center.x+roi_w/2,w)), 
+        cv::Range(roi_origin.y, min(tool_center.y+roi_h/2,h)));
+    // detect inside roi
+    visual_servo::ToolDetector::detect(roi);
+    tool_center.x+=roi_origin.x;
+    tool_center.y+=roi_origin.y;
 }
 
 void visual_servo::ToolDetector::drawDetectRes(){
