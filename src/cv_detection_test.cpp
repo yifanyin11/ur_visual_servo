@@ -19,39 +19,36 @@ int main(int argc, char** argv){
     // detection setups
     visual_servo::ImageCapturer cam1(nh, img_topic1);
     // visual_servo::ImageCapturer cam2(nh, img_topic2);
-    visual_servo::ToolDetector detector_toolcenter(nh, std::vector<int>{150, 150, 150, 160, 255, 255});
-    visual_servo::ToolDetector detector_tooltip(nh, std::vector<int>{20, 100, 100, 30, 255, 255});
-    // visual_servo::ToolDetector detector_blue(nh, std::vector<int>{111, 60, 70, 117, 80, 110});
-    visual_servo::ToolDetector detector_blue(nh, std::vector<int>{115, 60, 80, 118, 80, 100});
 
-    visual_servo::ToolDetector detector_red(nh, std::vector<int>{0, 100, 100, 5, 255, 255});
-    visual_servo::ToolDetector detector_target_tip1(nh, std::vector<int>{130, 30, 30, 140, 255, 120});
-    visual_servo::ToolDetector detector_target_tip2(nh, std::vector<int>{76, 100, 150, 96, 255, 255});
+    visual_servo::ToolDetector detector_blue(nh, std::vector<int>{115, 60, 80, 118, 80, 100});
+    visual_servo::ToolDetector detector_red(nh, std::vector<int>{0, 120, 110, 5, 160, 190});
+    // visual_servo::ToolDetector detector_green(nh, std::vector<int>{60, 30, 100, 80, 60, 130});
+    // visual_servo::ToolDetector detector_brown(nh, std::vector<int>{5, 70, 60, 10, 90, 80});
+    visual_servo::ToolDetector detector_orange(nh, std::vector<int>{5, 120, 160, 10, 140, 170});
+    visual_servo::ToolDetector detector_pink(nh, std::vector<int>{165, 120, 130, 175, 135, 150});
 
     int count = 0;
+    detector_pink.firstDetect(cam1);
+    while(nh.ok()){ 
+        count++;
+        detector_pink.track(cam1, 0.25, 0.25);
+        cam1.saveCurrentImage("./", std::to_string(count)+".png");
+        detector_pink.drawDetectRes();
 
-    
+        // detector_target.detect(cam2);
+        // detector_target.drawDetectRes();
 
-    // while(nh.ok()){
-    //     count++;
-    //     detector_blue.detect(cam1);
-    //     cam1.saveCurrentImage("./", std::to_string(count)+".png");
-    //     detector_blue.drawDetectRes();
+        // detector_target_tip1.detect(cam1);
+        // detector_target_tip1.drawDetectRes();
+        // detector_target_tip1.detect(cam2);
+        // detector_target_tip1.drawDetectRes();
 
-    //     // detector_target.detect(cam2);
-    //     // detector_target.drawDetectRes();
-
-    //     // detector_target_tip1.detect(cam1);
-    //     // detector_target_tip1.drawDetectRes();
-    //     // detector_target_tip1.detect(cam2);
-    //     // detector_target_tip1.drawDetectRes();
-
-    //     // detector_target_tip2.detect(cam1);
-    //     // detector_target_tip2.drawDetectRes();
-    //     // detector_target_tip2.detect(cam2);
-    //     // detector_target_tip2.drawDetectRes();
-    //     rate.sleep();
-    // }
+        // detector_target_tip2.detect(cam1);
+        // detector_target_tip2.drawDetectRes();
+        // detector_target_tip2.detect(cam2);
+        // detector_target_tip2.drawDetectRes();
+        rate.sleep();
+    }
 
     ros::shutdown();
     return 0;
