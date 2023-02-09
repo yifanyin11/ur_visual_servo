@@ -201,9 +201,9 @@ void visual_servo::ToolDetector::track(ImageCapturer& cam, double roir_width=0.2
     // create a img with a fixed size | dim constraints
     int h = image.rows, w = image.cols;
     int roi_w = w*roir_width, roi_h = h*roir_height;
-    cv::Point roi_origin(max(tool_center.x-roi_w/2,0), max(tool_center.y-roi_h/2,0));
-    cv::Mat roi = image(cv::Range(roi_origin.x, min(tool_center.x+roi_w/2,w)), 
-        cv::Range(roi_origin.y, min(tool_center.y+roi_h/2,h)));
+    cv::Point roi_origin(std::max(tool_center.x-roi_w/2,0), std::max(tool_center.y-roi_h/2,0));
+    cv::Mat roi = image(cv::Range(roi_origin.x, std::min(tool_center.x+roi_w/2,w)), 
+        cv::Range(roi_origin.y, std::min(tool_center.y+roi_h/2,h)));
     // detect inside roi
     visual_servo::ToolDetector::detect(roi);
     tool_center.x+=roi_origin.x;
