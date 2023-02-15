@@ -208,7 +208,7 @@ void visual_servo::GradientUpdater::initialize(visual_servo::ImageCapturer& cam1
 
     // get current pose
     geometry_msgs::PoseStamped current_pose;
-    current_pose = move_group_interface_arm.getCurrentPose("ee_link");
+    current_pose = move_group_interface_arm.getCurrentPose("flange");
 
     // define target pose and initialize it as current pose
     geometry_msgs::Pose target_pose;
@@ -494,7 +494,7 @@ void visual_servo::GradientUpdater::mainLoop(visual_servo::ImageCapturer& cam1, 
             image1 = cam1.getCurrentImage();
             image2 = cam2.getCurrentImage();
 
-            listener.lookupTransform("/world", "/ee_link",  ros::Time(0), transform);
+            listener.lookupTransform("/world", "/flange",  ros::Time(0), transform);
             break;
             }
         catch (tf::TransformException ex){
@@ -534,7 +534,7 @@ void visual_servo::GradientUpdater::mainLoop(visual_servo::ImageCapturer& cam1, 
                 image1 = cam1.getCurrentImage();
                 image2 = cam2.getCurrentImage();
 
-                listener.lookupTransform("/world", "/ee_link",  ros::Time(0), transform);
+                listener.lookupTransform("/world", "/flange",  ros::Time(0), transform);
 
                 break;
                 }

@@ -14,27 +14,33 @@ int main(int argc, char** argv){
 
     // image topics
     std::string img_topic1 = "/camera/image_raw";
-    // std::string img_topic2 = "/visual_servo/camera2/image_raw_2";
+    std::string img_topic2 = "/usb_cam/image_raw";
 
     // detection setups
     visual_servo::ImageCapturer cam1(nh, img_topic1);
-    // visual_servo::ImageCapturer cam2(nh, img_topic2);
+    visual_servo::ImageCapturer cam2(nh, img_topic2);
 
-    visual_servo::ToolDetector detector_blue(nh, std::vector<int>{100, 130, 75, 107, 150, 90});
-    visual_servo::ToolDetector detector_red(nh, std::vector<int>{0, 160, 100, 5, 170, 120});
-    // visual_servo::ToolDetector detector_green(nh, std::vector<int>{60, 30, 100, 80, 60, 130});
-    // visual_servo::ToolDetector detector_brown(nh, std::vector<int>{5, 70, 60, 10, 90, 80});
-    visual_servo::ToolDetector detector_orange(nh, std::vector<int>{5, 120, 160, 10, 140, 170});
-    visual_servo::ToolDetector detector_purple(nh, std::vector<int>{140, 80, 60, 150, 100, 75});
-    visual_servo::ToolDetector detector_pink(nh, std::vector<int>{165, 120, 130, 175, 135, 150});
+    visual_servo::ToolDetector detector_blue_usbcam(nh, std::vector<int>{95, 110, 130, 110, 200, 200});
+    visual_servo::ToolDetector detector_blue_cam(nh, std::vector<int>{106, 180, 160, 110, 200, 200});
+    visual_servo::ToolDetector detector_red(nh, std::vector<int>{0, 170, 80, 5, 190, 225});
+
+    // visual_servo::ToolDetector detector_orange(nh, std::vector<int>{5, 120, 160, 10, 140, 170});
+    // visual_servo::ToolDetector detector_purple(nh, std::vector<int>{125, 100, 180, 150, 130, 220});
+    // visual_servo::ToolDetector detector_pink(nh, std::vector<int>{165, 120, 130, 175, 135, 150});
 
     int count = 0;
-    detector_blue.firstDetect(cam1);
+    detector_blue_cam.firstDetect(cam1);
+    detector_blue_usbcam.firstDetect(cam2);
     while(nh.ok()){ 
         count++;
-        detector_blue.track(cam1, 0.25, 0.25);
-        cam1.saveCurrentImage("./", std::to_string(count)+".png");
-        detector_blue.drawDetectRes();
+        detector_blue_cam.track(cam1, 0.25, 0.25);
+        cam1.saveCurrentImage("./cam", std::to_string(count)+".png");
+        detector_blue_cam.drawDetectRes();
+
+        detector_blue_usbcam.track(cam2, 0.25, 0.25);
+        cam2.saveCurrentImage("./usbcam", std::to_string(count)+".png");
+        detector_blue_usbcam.drawDetectRes();
+
         rate.sleep();
     }
 

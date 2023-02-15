@@ -1,7 +1,7 @@
 import cv2
 import numpy as np
 
-shrinkHeight = 0.75
+shrinkHeight = 1.0
 dotRadius = 5
 
 def PointPickerTarCur(img, height_scale = shrinkHeight, r=dotRadius):

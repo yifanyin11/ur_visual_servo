@@ -38,7 +38,7 @@ int main(int argc, char** argv){
 
     // get current pose
     geometry_msgs::PoseStamped current_pose;
-    current_pose = move_group_interface_arm.getCurrentPose("ee_link");
+    current_pose = move_group_interface_arm.getCurrentPose("flange");
     // define target pose and initialize it as current pose
     geometry_msgs::Pose target_pose;
     target_pose.orientation = current_pose.pose.orientation;

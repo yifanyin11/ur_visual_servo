@@ -166,7 +166,7 @@ void visual_servo::JacobianUpdater::initializeJacobian(visual_servo::ImageCaptur
     cv::Point tool_dxl2, tool_dyl2, tool_dzl2, tool_dxr2, tool_dyr2, tool_dzr2;
     // get current pose
     geometry_msgs::PoseStamped current_pose;
-    current_pose = move_group_interface_arm.getCurrentPose("ee_link");
+    current_pose = move_group_interface_arm.getCurrentPose("flange");
     // define target pose and initialize it as current pose
     geometry_msgs::Pose target_pose;
     target_pose.orientation = current_pose.pose.orientation;
@@ -338,7 +338,7 @@ void visual_servo::JacobianUpdater::initializeJacobianOri(visual_servo::ImageCap
     
     // get current pose
     geometry_msgs::PoseStamped current_pose;
-    current_pose = move_group_interface_arm.getCurrentPose("ee_link");
+    current_pose = move_group_interface_arm.getCurrentPose("flange");
 
     // define target pose and initialize it as current pose
     geometry_msgs::Pose target_pose;
@@ -632,7 +632,7 @@ void visual_servo::JacobianUpdater::mainLoopPos(visual_servo::ImageCapturer& cam
             image1 = cam1.getCurrentImage();
             image2 = cam2.getCurrentImage();
 
-            listener.lookupTransform("/world", "/ee_link",  ros::Time(0), transform);
+            listener.lookupTransform("/world", "/flange",  ros::Time(0), transform);
             break;
             }
         catch (tf::TransformException ex){
@@ -660,7 +660,7 @@ void visual_servo::JacobianUpdater::mainLoopPos(visual_servo::ImageCapturer& cam
                 image1 = cam1.getCurrentImage();
                 image2 = cam2.getCurrentImage();
 
-                listener.lookupTransform("/world", "/ee_link",  ros::Time(0), transform);
+                listener.lookupTransform("/world", "/flange",  ros::Time(0), transform);
 
                 break;
                 }
@@ -725,7 +725,7 @@ void visual_servo::JacobianUpdater::mainLoop(visual_servo::ImageCapturer& cam1, 
             image1 = cam1.getCurrentImage();
             image2 = cam2.getCurrentImage();
 
-            listener.lookupTransform("/world", "/ee_link",  ros::Time(0), transform);
+            listener.lookupTransform("/world", "/flange",  ros::Time(0), transform);
             break;
             }
         catch (tf::TransformException ex){
@@ -770,7 +770,7 @@ void visual_servo::JacobianUpdater::mainLoop(visual_servo::ImageCapturer& cam1, 
                 image1 = cam1.getCurrentImage();
                 image2 = cam2.getCurrentImage();
 
-                listener.lookupTransform("/world", "/ee_link",  ros::Time(0), transform);
+                listener.lookupTransform("/world", "/flange",  ros::Time(0), transform);
 
                 break;
                 }
