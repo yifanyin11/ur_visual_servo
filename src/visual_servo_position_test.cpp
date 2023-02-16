@@ -32,13 +32,13 @@ int main(int argc, char** argv){
             move_group_interface_arm.getCurrentState()->getJointModelGroup(PLANNING_GROUP_ARM);
     
     moveit::planning_interface::MoveGroupInterface::Plan my_plan_arm;
-    move_group_interface_arm.setMaxVelocityScalingFactor(0.02);
+    move_group_interface_arm.setMaxVelocityScalingFactor(0.0025);
     move_group_interface_arm.setMaxAccelerationScalingFactor(0.01);
     bool success;
 
     // get current pose
     geometry_msgs::PoseStamped current_pose;
-    current_pose = move_group_interface_arm.getCurrentPose("flange");
+    current_pose = move_group_interface_arm.getCurrentPose("tool0");
     // define target pose and initialize it as current pose
     geometry_msgs::Pose target_pose;
     target_pose.orientation = current_pose.pose.orientation;
@@ -49,14 +49,16 @@ int main(int argc, char** argv){
     std::string t_topic = "/visual_servo/targets";
 
     // image topics
-    std::string img_topic1 = "/visual_servo/camera1/image_raw_1";
-    std::string img_topic2 = "/visual_servo/camera2/image_raw_2";
+    std::string img_topic1 = "/camera/image_raw";
+    std::string img_topic2 = "/usb_cam/image_raw";
 
     // detection setups
     visual_servo::ImageCapturer cam1(nh, img_topic1);
     visual_servo::ImageCapturer cam2(nh, img_topic2);
-    visual_servo::ToolDetector detector_target(nh, std::vector<int>{0, 100, 100, 5, 255, 255});
-    visual_servo::ToolDetector detector_tool(nh, std::vector<int>{150, 150, 150, 160, 255, 255});
+    // visual_servo::ToolDetector detector_red(nh, std::vector<int>{0, 100, 100, 5, 255, 255});
+    visual_servo::ToolDetector detector_red(nh, std::vector<int>{0, 145, 100, 7, 190, 230});
+    visual_servo::ToolDetector detector_blue_cam(nh, std::vector<int>{106, 180, 160, 110, 200, 200});
+    visual_servo::ToolDetector detector_blue_usbcam(nh, std::vector<int>{95, 110, 130, 110, 200, 200});
 
     double tol = 3.0;
 
@@ -65,7 +67,7 @@ int main(int argc, char** argv){
 
     Eigen::VectorXd increment;
     while(nh.ok()&&(!servo_controller.stopSign())){
-        servo_controller.directionIncrement(increment, cam1, cam2, detector_tool);
+        servo_controller.directionIncrement(increment, cam1, cam2, detector_red);
         std::cout << "Done increment" << std::endl;
         target_pose.position.x = target_pose.position.x+increment(0);
         target_pose.position.y = target_pose.position.y+increment(1);

@@ -102,6 +102,7 @@ namespace visual_servo{
             Eigen::VectorXd getToolPosition();
             // member functions 
             void directionIncrement(Eigen::VectorXd& inc, ImageCapturer& cam1, ImageCapturer& cam2, ToolDetector& detector);
+            void directionIncrement(Eigen::VectorXd& inc, ImageCapturer& cam1, ImageCapturer& cam2, std::vector<ToolDetector>& detector_list);
             void oriDirectionIncrement(Eigen::VectorXd& inc, ImageCapturer& cam1, ImageCapturer& cam2, std::vector<ToolDetector>& detector_list);
             void uniOriDirectionIncrement(Eigen::VectorXd& inc, ImageCapturer& cam1, ImageCapturer& cam2, std::vector<ToolDetector>& detector_list);
             void poseDirectionIncrement(Eigen::VectorXd& inc, ImageCapturer& cam1, ImageCapturer& cam2, std::vector<ToolDetector>& detector_list);

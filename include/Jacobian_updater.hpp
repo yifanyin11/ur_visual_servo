@@ -76,6 +76,9 @@ namespace visual_servo{
 
         // publishers
         ros::Publisher J_pub;
+        
+        // for test
+        int count;
 
     public:
         // constructors

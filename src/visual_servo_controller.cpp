@@ -191,10 +191,10 @@ visual_servo::ToolDetector& detector){
 
     detector.detect(cam1);
     cv::Point toolPos1 = detector.getCenter();
-    // detector.drawDetectRes();
+    detector.drawDetectRes();
     detector.detect(cam2);
     cv::Point toolPos2 = detector.getCenter();
-    // detector.drawDetectRes();
+    detector.drawDetectRes();
 
     toolPos << toolPos1.x, toolPos1.y, toolPos2.x, toolPos2.y;
 
@@ -224,6 +224,67 @@ visual_servo::ToolDetector& detector){
 
     std::cout << "increment after limit" << increment << std::endl;
 }
+
+void visual_servo::VisualServoController::directionIncrement(Eigen::VectorXd& increment, ImageCapturer& cam1, ImageCapturer& cam2, std::vector<ToolDetector>& detector_list)
+{
+    ros::Rate loopRate(freq);
+
+    if (!targetReceived){
+        ROS_INFO("Waiting for servo target ......");
+        while((nh.ok()) && !targetReceived){
+            ros::spinOnce();
+            loopRate.sleep();
+        }
+        ROS_INFO("Servo target received!");
+    }
+    if (target_pos.size()!=num_features){
+        ROS_ERROR("Target vector size inconsistent! Should match: %d", num_features);
+    }
+    if (!JChecked){
+        ROS_INFO("Waiting for Jacobian being initialized ......");
+        while((nh.ok()) && !JChecked){
+            ros::spinOnce();
+            loopRate.sleep();
+        }
+        ROS_INFO("Jacobian received!");
+    }
+
+    detector_list[0].detect(cam1);
+    cv::Point toolPos1 = detector_list[0].getCenter();
+    detector_list[0].drawDetectRes();
+    detector_list[1].detect(cam2);
+    cv::Point toolPos2 = detector_list[1].getCenter();
+    detector_list[1].drawDetectRes();
+
+    toolPos << toolPos1.x, toolPos1.y, toolPos2.x, toolPos2.y;
+
+    controlError = target_pos-toolPos;
+
+    if (controlError.norm()<tolerance){
+        increment.setZero();
+        continueLoop = false;
+        ROS_INFO("Reach given accuracy, visual servo stopped!");
+        return;
+    }
+    
+    std::cout << "target: " << target_pos << std::endl;
+    std::cout << "toolPos: " << toolPos << std::endl;
+    std::cout << "control_error: " << controlError << std::endl;
+
+    Eigen::MatrixXd J_pinv = (J.transpose()*J).inverse()*J.transpose();
+    increment = K*J_pinv*controlError;
+    std::cout << "increment" << increment << std::endl;
+
+    if (increment.norm()>servoMaxStep){
+        limInc(increment, servoMaxStep);
+    }
+    else{
+        ROS_INFO("Refining ---");
+    }
+
+    std::cout << "increment after limit" << increment << std::endl;
+}
+
 
 void visual_servo::VisualServoController::oriDirectionIncrement(Eigen::VectorXd& increment, visual_servo::ImageCapturer& cam1, visual_servo::ImageCapturer& cam2, 
 std::vector<visual_servo::ToolDetector>& detector_list){

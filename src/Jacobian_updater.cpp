@@ -9,12 +9,12 @@ nh(nh){
     num_features = 4;
 
     update_pix_step = 50;
-    update_enc_step = 0.3;
+    update_enc_step = 0.1;
 
     update_pix_ang_step = M_PI/4;
     update_enc_ang_step = M_PI/4;
 
-    initStep = 0.05;
+    initStep = 0.03;
     initStepOri = M_PI/12;
 
     toolPos.resize(num_features);
@@ -31,6 +31,9 @@ nh(nh){
     J_ori.resize(num_features, dof_robot);
     J_flat.resize(dof_robot*num_features);
     J_ori_flat.resize(dof_robot*num_features);
+
+    // for test
+    count = 0;
 
     // publishers
     J_pub = nh.advertise<std_msgs::Float64MultiArray>(J_topic, 1);
@@ -157,7 +160,7 @@ void visual_servo::JacobianUpdater::initializeJacobian(visual_servo::ImageCaptur
             move_group_interface_arm.getCurrentState()->getJointModelGroup(PLANNING_GROUP_ARM);
     
     moveit::planning_interface::MoveGroupInterface::Plan my_plan_arm;
-    move_group_interface_arm.setMaxVelocityScalingFactor(0.3);
+    move_group_interface_arm.setMaxVelocityScalingFactor(0.02);
     move_group_interface_arm.setMaxAccelerationScalingFactor(0.01);
     bool success;
 
@@ -166,7 +169,8 @@ void visual_servo::JacobianUpdater::initializeJacobian(visual_servo::ImageCaptur
     cv::Point tool_dxl2, tool_dyl2, tool_dzl2, tool_dxr2, tool_dyr2, tool_dzr2;
     // get current pose
     geometry_msgs::PoseStamped current_pose;
-    current_pose = move_group_interface_arm.getCurrentPose("flange");
+    current_pose = move_group_interface_arm.getCurrentPose("tool0");
+
     // define target pose and initialize it as current pose
     geometry_msgs::Pose target_pose;
     target_pose.orientation = current_pose.pose.orientation;
@@ -184,8 +188,11 @@ void visual_servo::JacobianUpdater::initializeJacobian(visual_servo::ImageCaptur
     // detect tool image position at x-
     detector.detect(cam1);
     tool_dxl1 = detector.getCenter();
+    detector.drawDetectRes();
     detector.detect(cam2);
     tool_dxl2 = detector.getCenter();
+    detector.drawDetectRes();
+
     // move to x+
     target_pose.position.x = target_pose.position.x+2*initStep;
     move_group_interface_arm.setPoseTarget(target_pose);
@@ -199,8 +206,10 @@ void visual_servo::JacobianUpdater::initializeJacobian(visual_servo::ImageCaptur
     // detect tool image position at x+
     detector.detect(cam1);
     tool_dxr1 = detector.getCenter();
+    detector.drawDetectRes();
     detector.detect(cam2);
     tool_dxr2 = detector.getCenter();
+    detector.drawDetectRes();
     
     // move to y-
     target_pose.position.x = target_pose.position.x-initStep;
@@ -216,8 +225,10 @@ void visual_servo::JacobianUpdater::initializeJacobian(visual_servo::ImageCaptur
     // detect tool image position at y-
     detector.detect(cam1);
     tool_dyl1 = detector.getCenter();
+    detector.drawDetectRes();
     detector.detect(cam2);
     tool_dyl2 = detector.getCenter();
+    detector.drawDetectRes();
 
     // move to y+
     target_pose.position.y = target_pose.position.y+2*initStep;
@@ -232,8 +243,10 @@ void visual_servo::JacobianUpdater::initializeJacobian(visual_servo::ImageCaptur
     // detect tool image position at x+
     detector.detect(cam1);
     tool_dyr1 = detector.getCenter();
+    detector.drawDetectRes();
     detector.detect(cam2);
     tool_dyr2 = detector.getCenter();
+    detector.drawDetectRes();
 
     // move to z-
     target_pose.position.y = target_pose.position.y-initStep;
@@ -249,8 +262,10 @@ void visual_servo::JacobianUpdater::initializeJacobian(visual_servo::ImageCaptur
     // detect tool image position at z-
     detector.detect(cam1);
     tool_dzl1 = detector.getCenter();
+    detector.drawDetectRes();
     detector.detect(cam2);
     tool_dzl2 = detector.getCenter();
+    detector.drawDetectRes();
 
     // move to z+
     target_pose.position.z = target_pose.position.z+2*initStep;
@@ -265,8 +280,10 @@ void visual_servo::JacobianUpdater::initializeJacobian(visual_servo::ImageCaptur
     // detect tool image position at z+
     detector.detect(cam1);
     tool_dzr1 = detector.getCenter();
+    detector.drawDetectRes();
     detector.detect(cam2);
     tool_dzr2 = detector.getCenter();
+    detector.drawDetectRes();
 
     // go back to center
     target_pose.position.z = target_pose.position.z-initStep;
@@ -323,7 +340,7 @@ void visual_servo::JacobianUpdater::initializeJacobianOri(visual_servo::ImageCap
             move_group_interface_arm.getCurrentState()->getJointModelGroup(PLANNING_GROUP_ARM);
     
     moveit::planning_interface::MoveGroupInterface::Plan my_plan_arm;
-    move_group_interface_arm.setMaxVelocityScalingFactor(0.3);
+    move_group_interface_arm.setMaxVelocityScalingFactor(0.02);
     move_group_interface_arm.setMaxAccelerationScalingFactor(0.01);
     bool success;
 
@@ -338,7 +355,7 @@ void visual_servo::JacobianUpdater::initializeJacobianOri(visual_servo::ImageCap
     
     // get current pose
     geometry_msgs::PoseStamped current_pose;
-    current_pose = move_group_interface_arm.getCurrentPose("flange");
+    current_pose = move_group_interface_arm.getCurrentPose("tool0");
 
     // define target pose and initialize it as current pose
     geometry_msgs::Pose target_pose;
@@ -631,8 +648,11 @@ void visual_servo::JacobianUpdater::mainLoopPos(visual_servo::ImageCapturer& cam
         try{
             image1 = cam1.getCurrentImage();
             image2 = cam2.getCurrentImage();
+            cam1.saveCurrentImage("./along_cam", std::to_string(count)+".png");
+            cam2.saveCurrentImage("./along_usbcam", std::to_string(count)+".png");
+            count++;
 
-            listener.lookupTransform("/world", "/flange",  ros::Time(0), transform);
+            listener.lookupTransform("/base_link", "/tool0",  ros::Time(0), transform);
             break;
             }
         catch (tf::TransformException ex){
@@ -659,8 +679,11 @@ void visual_servo::JacobianUpdater::mainLoopPos(visual_servo::ImageCapturer& cam
                 // overload detect function to detect a given image, and only capture images in this loop
                 image1 = cam1.getCurrentImage();
                 image2 = cam2.getCurrentImage();
+                cam1.saveCurrentImage("./along_cam", std::to_string(count)+".png");
+                cam2.saveCurrentImage("./along_usbcam", std::to_string(count)+".png");
+                count++;
 
-                listener.lookupTransform("/world", "/flange",  ros::Time(0), transform);
+                listener.lookupTransform("/base_link", "/tool0",  ros::Time(0), transform);
 
                 break;
                 }
@@ -725,7 +748,7 @@ void visual_servo::JacobianUpdater::mainLoop(visual_servo::ImageCapturer& cam1, 
             image1 = cam1.getCurrentImage();
             image2 = cam2.getCurrentImage();
 
-            listener.lookupTransform("/world", "/flange",  ros::Time(0), transform);
+            listener.lookupTransform("/base_link", "/tool0",  ros::Time(0), transform);
             break;
             }
         catch (tf::TransformException ex){
@@ -770,7 +793,7 @@ void visual_servo::JacobianUpdater::mainLoop(visual_servo::ImageCapturer& cam1, 
                 image1 = cam1.getCurrentImage();
                 image2 = cam2.getCurrentImage();
 
-                listener.lookupTransform("/world", "/flange",  ros::Time(0), transform);
+                listener.lookupTransform("/base_link", "/tool0",  ros::Time(0), transform);
 
                 break;
                 }
