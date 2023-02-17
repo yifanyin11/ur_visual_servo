@@ -33,13 +33,13 @@ int main(int argc, char** argv){
             move_group_interface_arm.getCurrentState()->getJointModelGroup(PLANNING_GROUP_ARM);
     
     moveit::planning_interface::MoveGroupInterface::Plan my_plan_arm;
-    move_group_interface_arm.setMaxVelocityScalingFactor(0.02);
+    move_group_interface_arm.setMaxVelocityScalingFactor(0.0025);
     move_group_interface_arm.setMaxAccelerationScalingFactor(0.01);
     bool success;
 
     // get current pose
     geometry_msgs::PoseStamped current_pose;
-    current_pose = move_group_interface_arm.getCurrentPose("flange");
+    current_pose = move_group_interface_arm.getCurrentPose("tool0");
     // define target pose and initialize it as current pose
     geometry_msgs::Pose target_pose;
     target_pose.orientation = current_pose.pose.orientation;
@@ -93,8 +93,8 @@ int main(int argc, char** argv){
     std::vector<visual_servo::ToolDetector> detector_list{detector_toolcenter, detector_tooltip, detector_frametip};
 
     while(nh.ok()&&(!servo_controller.stopSign())){
-        // servo_controller.uniOriDirectionIncrement(increment, cam1, cam2, detector_list);
-        servo_controller.oriDirectionIncrement(increment, cam1, cam2, detector_list);
+        servo_controller.uniOriDirectionIncrement(increment, cam1, cam2, detector_list);
+        // servo_controller.oriDirectionIncrement(increment, cam1, cam2, detector_list);
         std::cout << "Done increment" << std::endl;
 
         transform_target.setOrigin(tf::Vector3(x, y, z));
