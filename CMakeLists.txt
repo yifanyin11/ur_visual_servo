@@ -19,6 +19,8 @@ find_package(catkin REQUIRED COMPONENTS
   rviz_visual_tools
   moveit_visual_tools
 
+  dl_service
+
   cv_bridge
   message_generation
   std_msgs

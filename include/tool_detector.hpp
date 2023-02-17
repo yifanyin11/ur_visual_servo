@@ -9,7 +9,8 @@
 #include <opencv2/imgproc/imgproc.hpp>
 #include <cv_bridge/cv_bridge.h>
 #include <sensor_msgs/image_encodings.h>
-#include "image_capturer.hpp"
+#include <image_capturer.hpp>
+#include <dl_service/dl_detection.h>
 
 namespace visual_servo{
     class ToolDetector{
@@ -22,11 +23,13 @@ namespace visual_servo{
         cv::Scalar lower_hsv;
         cv::Scalar upper_hsv;
 
+        ros::ServiceClient cli;
+
     public:
         friend class JacobianUpdater; 
         friend class VisualServoController; 
         // constructor
-        ToolDetector(ros::NodeHandle& nh, std::vector<int> hsv_range);
+        ToolDetector(ros::NodeHandle& nh, std::vector<int> hsv_range, bool dl_on=false);
         // destructor
         ~ToolDetector(){};
         // mutators
@@ -39,6 +42,7 @@ namespace visual_servo{
         void detect(cv::Mat& img); 
         void track(ImageCapturer& cam, double roir_width=0.25, double roir_height=0.25);
         void track(cv::Mat& img, ImageCapturer& cam, double roir_width=0.25, double roir_height=0.25);
+        void dlDetect(cv::Mat& img, cv::Point2d& drivertip, cv::Point2d& screwcup);
         void drawDetectRes(); 
         void drawDetectRes(cv::Mat img); 
     };

@@ -1,6 +1,6 @@
 #include "tool_detector.hpp"
 
-visual_servo::ToolDetector::ToolDetector(ros::NodeHandle& nh, std::vector<int> hsv_range):
+visual_servo::ToolDetector::ToolDetector(ros::NodeHandle& nh, std::vector<int> hsv_range, bool dl_on):
 nh(nh){
     tool_center.x = -1.0;
     tool_center.y = -1.0;
@@ -10,6 +10,10 @@ nh(nh){
     corner2.y = -1.0;
     lower_hsv = cv::Scalar(hsv_range[0], hsv_range[1], hsv_range[2]);
     upper_hsv = cv::Scalar(hsv_range[3], hsv_range[4], hsv_range[5]);
+    if (dl_on){
+        cli = nh.serviceClient<dl_service::dl_detection>("/visual_servo/dl_detection");
+        cli.waitForExistence();
+    }
 }
 
 cv::Mat visual_servo::ToolDetector::getSourceImage(visual_servo::ImageCapturer& cam){
@@ -250,6 +254,29 @@ void visual_servo::ToolDetector::track(cv::Mat& image, ImageCapturer& cam, doubl
         corner1.y+=roi_origin.y;
         corner2.x+=roi_origin.x;
         corner2.y+=roi_origin.y;
+    }
+}
+
+void visual_servo::ToolDetector::dlDetect(cv::Mat& img, cv::Point2d& drivertip, cv::Point2d& screwcup){
+    cv_bridge::CvImage img_bridge;
+    sensor_msgs::Image img_msg;
+    std_msgs::Header header; // empty header
+    header.seq = 0; // user defined counter
+    header.stamp = ros::Time::now(); // time
+    img_bridge = cv_bridge::CvImage(header, sensor_msgs::image_encodings::RGB8, img);
+    img_bridge.toImageMsg(img_msg);
+
+    dl_service::dl_detection srv;
+    srv.request.image = img_msg;
+
+    if (!cli.call(srv)){
+        ROS_ERROR("failed to call image capture in tool_detector");
+        drivertip.x = -1.0;
+        drivertip.y = -1.0;
+    }
+    else{
+        drivertip.x = srv.response.coordinates[0];
+        drivertip.y = srv.response.coordinates[1];
     }
 }
 
