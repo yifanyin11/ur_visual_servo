@@ -36,7 +36,8 @@ namespace visual_servo{
         void firstDetect(ImageCapturer& cam);
         void detect(ImageCapturer& cam); // update source image with the cur frame from cam, perform detection using that image, update tool_center
         void detect(cv::Mat& img); 
-        void track(ImageCapturer& cam, double roir_width, double roir_height);
+        void track(ImageCapturer& cam, double roir_width=0.25, double roir_height=0.25);
+        void track(cv::Mat& img, ImageCapturer& cam, double roir_width=0.25, double roir_height=0.25);
         void drawDetectRes(); 
         void drawDetectRes(cv::Mat img); 
     };

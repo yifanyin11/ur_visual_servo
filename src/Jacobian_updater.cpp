@@ -179,6 +179,13 @@ void visual_servo::JacobianUpdater::initializeJacobian(visual_servo::ImageCaptur
     target_pose.position.x = current_pose.pose.position.x-initStep;
     move_group_interface_arm.setPoseTarget(target_pose);
 
+    // // ************* track ******************
+    // // first detection
+    // detector.firstDetect(cam1);
+    // detector.drawDetectRes();
+    // detector.firstDetect(cam2);
+    // detector.drawDetectRes();
+
     success = (move_group_interface_arm.plan(my_plan_arm) == moveit::planning_interface::MoveItErrorCode::SUCCESS);
     ROS_INFO_NAMED("update_image_J", "Visualizing plan (pose goal) %s", success ? "" : "FAILED");
     move_group_interface_arm.move();
@@ -648,9 +655,9 @@ void visual_servo::JacobianUpdater::mainLoopPos(visual_servo::ImageCapturer& cam
         try{
             image1 = cam1.getCurrentImage();
             image2 = cam2.getCurrentImage();
-            cam1.saveCurrentImage("./along_cam", std::to_string(count)+".png");
-            cam2.saveCurrentImage("./along_usbcam", std::to_string(count)+".png");
-            count++;
+            // cam1.saveCurrentImage("./along_cam", std::to_string(count)+".png");
+            // cam2.saveCurrentImage("./along_usbcam", std::to_string(count)+".png");
+            // count++;
 
             listener.lookupTransform("/base_link", "/tool0",  ros::Time(0), transform);
             break;
@@ -679,8 +686,8 @@ void visual_servo::JacobianUpdater::mainLoopPos(visual_servo::ImageCapturer& cam
                 // overload detect function to detect a given image, and only capture images in this loop
                 image1 = cam1.getCurrentImage();
                 image2 = cam2.getCurrentImage();
-                cam1.saveCurrentImage("./along_cam", std::to_string(count)+".png");
-                cam2.saveCurrentImage("./along_usbcam", std::to_string(count)+".png");
+                // cam1.saveCurrentImage("./along_cam", std::to_string(count)+".png");
+                // cam2.saveCurrentImage("./along_usbcam", std::to_string(count)+".png");
                 count++;
 
                 listener.lookupTransform("/base_link", "/tool0",  ros::Time(0), transform);

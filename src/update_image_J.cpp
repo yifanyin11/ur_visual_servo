@@ -16,7 +16,7 @@ int main(int argc, char** argv){
     visual_servo::ImageCapturer cam2(nh, img_topic2);
 
     // visual_servo::ToolDetector detector_red(nh, std::vector<int>{0, 100, 100, 5, 255, 255});
-    visual_servo::ToolDetector detector_red(nh, std::vector<int>{0, 145, 100, 7, 190, 230});
+    visual_servo::ToolDetector detector_red(nh, std::vector<int>{0, 145, 140, 7, 190, 230});
 
     std::string J_topic = "/visual_servo/image_Jacobian";
     visual_servo::JacobianUpdater J_updater(nh, J_topic);

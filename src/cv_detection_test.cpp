@@ -26,8 +26,11 @@ int main(int argc, char** argv){
     visual_servo::ToolDetector detector_red(nh, std::vector<int>{0, 145, 140, 7, 190, 230});
     // visual_servo::ToolDetector detector_red(nh, std::vector<int>{175, 170, 80, 180, 190, 225});
 
-    // visual_servo::ToolDetector detector_orange(nh, std::vector<int>{5, 120, 160, 10, 140, 170});
-    // visual_servo::ToolDetector detector_purple(nh, std::vector<int>{125, 100, 180, 150, 130, 220});
+    // visual_servo::ToolDetector detector_purple(nh, std::vector<int>{113, 40, 170, 121, 150, 200});
+    visual_servo::ToolDetector detector_purple(nh, std::vector<int>{113, 40, 170, 121, 120, 225});
+
+    visual_servo::ToolDetector detector_purple_target(nh, std::vector<int>{113, 40, 170, 121, 150, 200});
+    visual_servo::ToolDetector detector_yellow(nh, std::vector<int>{25, 40, 250, 35, 90, 255});
     // visual_servo::ToolDetector detector_pink(nh, std::vector<int>{165, 120, 130, 175, 135, 150});
 
     int count = 0;
@@ -37,13 +40,13 @@ int main(int argc, char** argv){
     // detector_blue_usbcam.firstDetect(cam2);
     while(nh.ok()){ 
         count++;
-        detector_red.detect(cam1);
+        detector_purple.detect(cam1);
         cam1.saveCurrentImage("./cam", std::to_string(count)+".png");
-        detector_red.drawDetectRes();
+        detector_purple.drawDetectRes();
 
-        detector_red.detect(cam2);
+        detector_purple.detect(cam2);
         cam2.saveCurrentImage("./usbcam", std::to_string(count)+".png");
-        detector_red.drawDetectRes();
+        detector_purple.drawDetectRes();
 
         // detector_red.track(cam1, 0.25, 0.25);
         // cam1.saveCurrentImage("./cam", std::to_string(count)+".png");

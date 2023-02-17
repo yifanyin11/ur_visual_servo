@@ -199,9 +199,35 @@ void visual_servo::ToolDetector::detect(cv::Mat& img){
     }
 }
 
-void visual_servo::ToolDetector::track(ImageCapturer& cam, double roir_width=0.25, double roir_height=0.25){
+void visual_servo::ToolDetector::track(ImageCapturer& cam, double roir_width, double roir_height){
     // update source image
     image = cam.getCurrentImage();
+    // create a img with a fixed size | dim constraints
+    int h = image.rows, w = image.cols;
+    if (tool_center.x==-1 || tool_center.y==-1 || tool_center.x>=w || tool_center.y>=h){
+        while (tool_center.x==-1 || tool_center.y==-1 || tool_center.x>=image.cols || tool_center.y>=image.rows){
+            ROS_ERROR("TRYING TO CORRECT AFTER DETECTION FAILED ...");
+            image = cam.getCurrentImage();
+            visual_servo::ToolDetector::detect(image);
+        }
+    }
+    else{
+        int roi_w = w*roir_width, roi_h = h*roir_height;
+        cv::Point roi_origin(int(std::max(tool_center.x-roi_w/2,0)), int(std::max(tool_center.y-roi_h/2,0)));
+        cv::Mat roi = image(cv::Range(roi_origin.y, int(std::min(tool_center.y+roi_h/2,h))), 
+            cv::Range(roi_origin.x, int(std::min(tool_center.x+roi_w/2,w))));
+        // detect inside roi
+        visual_servo::ToolDetector::detect(roi);
+        tool_center.x+=roi_origin.x;
+        tool_center.y+=roi_origin.y;
+        corner1.x+=roi_origin.x;
+        corner1.y+=roi_origin.y;
+        corner2.x+=roi_origin.x;
+        corner2.y+=roi_origin.y;
+    }
+}
+
+void visual_servo::ToolDetector::track(cv::Mat& image, ImageCapturer& cam, double roir_width, double roir_height){
     // create a img with a fixed size | dim constraints
     int h = image.rows, w = image.cols;
     if (tool_center.x==-1 || tool_center.y==-1 || tool_center.x>=w || tool_center.y>=h){
