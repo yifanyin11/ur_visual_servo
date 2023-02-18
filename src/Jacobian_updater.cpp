@@ -334,6 +334,193 @@ void visual_servo::JacobianUpdater::initializeJacobian(visual_servo::ImageCaptur
 
 }
 
+void visual_servo::JacobianUpdater::initializeJacobian(visual_servo::ImageCapturer& cam1, visual_servo::ImageCapturer& cam2, std::vector<visual_servo::ToolDetector>& detector_list){
+    // Ros setups
+    ros::AsyncSpinner spinner(4);
+    spinner.start();
+    
+    // MOVEIT planning setups
+    static const std::string PLANNING_GROUP_ARM = "manipulator";
+    moveit::planning_interface::PlanningSceneInterface planning_scene_interface;
+    moveit::planning_interface::MoveGroupInterface move_group_interface_arm(PLANNING_GROUP_ARM);
+    const robot_state::JointModelGroup* joint_model_group =
+            move_group_interface_arm.getCurrentState()->getJointModelGroup(PLANNING_GROUP_ARM);
+    
+    moveit::planning_interface::MoveGroupInterface::Plan my_plan_arm;
+    move_group_interface_arm.setMaxVelocityScalingFactor(0.02);
+    move_group_interface_arm.setMaxAccelerationScalingFactor(0.01);
+    bool success;
+
+    // define points
+    cv::Point tool_dxl1, tool_dyl1, tool_dzl1, tool_dxr1, tool_dyr1, tool_dzr1;
+    cv::Point tool_dxl2, tool_dyl2, tool_dzl2, tool_dxr2, tool_dyr2, tool_dzr2;
+    // get current pose
+    geometry_msgs::PoseStamped current_pose;
+    current_pose = move_group_interface_arm.getCurrentPose("tool0");
+
+    // define target pose and initialize it as current pose
+    geometry_msgs::Pose target_pose;
+    target_pose.orientation = current_pose.pose.orientation;
+    target_pose.position = current_pose.pose.position;
+    // move to x-
+    target_pose.position.x = current_pose.pose.position.x-initStep;
+    move_group_interface_arm.setPoseTarget(target_pose);
+
+    // // ************* track ******************
+    // // first detection
+    // detector.firstDetect(cam1);
+    // detector.drawDetectRes();
+    // detector.firstDetect(cam2);
+    // detector.drawDetectRes();
+
+    success = (move_group_interface_arm.plan(my_plan_arm) == moveit::planning_interface::MoveItErrorCode::SUCCESS);
+    ROS_INFO_NAMED("update_image_J", "Visualizing plan (pose goal) %s", success ? "" : "FAILED");
+    move_group_interface_arm.move();
+    std::cout << "move to x- finished ..." << std::endl;
+    ros::Duration(1.0).sleep();
+
+    // detect tool image position at x-
+    detector_list[0].detect(cam1);
+    tool_dxl1 = detector_list[0].getCenter();
+    detector_list[0].drawDetectRes();
+    detector_list[1].detect(cam2);
+    tool_dxl2 = detector_list[1].getCenter();
+    detector_list[1].drawDetectRes();
+
+    // move to x+
+    target_pose.position.x = target_pose.position.x+2*initStep;
+    move_group_interface_arm.setPoseTarget(target_pose);
+
+    success = (move_group_interface_arm.plan(my_plan_arm) == moveit::planning_interface::MoveItErrorCode::SUCCESS);
+    ROS_INFO_NAMED("update_image_J", "Visualizing plan (pose goal) %s", success ? "" : "FAILED");
+    move_group_interface_arm.move();
+    std::cout << "move to x+ finished ..." << std::endl;
+    ros::Duration(1.0).sleep();
+
+    // detect tool image position at x+
+    detector_list[0].detect(cam1);
+    tool_dxr1 = detector_list[0].getCenter();
+    detector_list[0].drawDetectRes();
+    detector_list[1].detect(cam2);
+    tool_dxr2 = detector_list[1].getCenter();
+    detector_list[1].drawDetectRes();
+    
+    // move to y-
+    target_pose.position.x = target_pose.position.x-initStep;
+    target_pose.position.y = target_pose.position.y-initStep;
+    move_group_interface_arm.setPoseTarget(target_pose);
+
+    success = (move_group_interface_arm.plan(my_plan_arm) == moveit::planning_interface::MoveItErrorCode::SUCCESS);
+    ROS_INFO_NAMED("update_image_J", "Visualizing plan (pose goal) %s", success ? "" : "FAILED");
+    move_group_interface_arm.move();
+    std::cout << "move to y- finished ..." << std::endl;
+    ros::Duration(1.0).sleep();
+
+    // detect tool image position at y-
+    detector_list[0].detect(cam1);
+    tool_dyl1 = detector_list[0].getCenter();
+    detector_list[0].drawDetectRes();
+    detector_list[1].detect(cam2);
+    tool_dyl2 = detector_list[1].getCenter();
+    detector_list[1].drawDetectRes();
+
+    // move to y+
+    target_pose.position.y = target_pose.position.y+2*initStep;
+    move_group_interface_arm.setPoseTarget(target_pose);
+
+    success = (move_group_interface_arm.plan(my_plan_arm) == moveit::planning_interface::MoveItErrorCode::SUCCESS);
+    ROS_INFO_NAMED("update_image_J", "Visualizing plan (pose goal) %s", success ? "" : "FAILED");
+    move_group_interface_arm.move();
+    std::cout << "move to y+ finished ..." << std::endl;
+    ros::Duration(1.0).sleep();
+
+    // detect tool image position at x+
+    detector_list[0].detect(cam1);
+    tool_dyr1 = detector_list[0].getCenter();
+    detector_list[0].drawDetectRes();
+    detector_list[1].detect(cam2);
+    tool_dyr2 = detector_list[1].getCenter();
+    detector_list[1].drawDetectRes();
+
+    // move to z-
+    target_pose.position.y = target_pose.position.y-initStep;
+    target_pose.position.z = target_pose.position.z-initStep;
+    move_group_interface_arm.setPoseTarget(target_pose);
+
+    success = (move_group_interface_arm.plan(my_plan_arm) == moveit::planning_interface::MoveItErrorCode::SUCCESS);
+    ROS_INFO_NAMED("update_image_J", "Visualizing plan (pose goal) %s", success ? "" : "FAILED");
+    move_group_interface_arm.move();
+    std::cout << "move to z- finished ..." << std::endl;
+    ros::Duration(1.0).sleep();
+
+    // detect tool image position at z-
+    detector_list[0].detect(cam1);
+    tool_dzl1 = detector_list[0].getCenter();
+    detector_list[0].drawDetectRes();
+    detector_list[1].detect(cam2);
+    tool_dzl2 = detector_list[1].getCenter();
+    detector_list[1].drawDetectRes();
+
+    // move to z+
+    target_pose.position.z = target_pose.position.z+2*initStep;
+    move_group_interface_arm.setPoseTarget(target_pose);
+
+    success = (move_group_interface_arm.plan(my_plan_arm) == moveit::planning_interface::MoveItErrorCode::SUCCESS);
+    ROS_INFO_NAMED("update_image_J", "Visualizing plan (pose goal) %s", success ? "" : "FAILED");
+    move_group_interface_arm.move();
+    std::cout << "move to z+ finished ..." << std::endl;
+    ros::Duration(1.0).sleep();
+
+    // detect tool image position at z+
+    detector_list[0].detect(cam1);
+    tool_dzr1 = detector_list[0].getCenter();
+    detector_list[0].drawDetectRes();
+    detector_list[1].detect(cam2);
+    tool_dzr2 = detector_list[1].getCenter();
+    detector_list[1].drawDetectRes();
+
+    // go back to center
+    target_pose.position.z = target_pose.position.z-initStep;
+    move_group_interface_arm.setPoseTarget(target_pose);
+
+    success = (move_group_interface_arm.plan(my_plan_arm) == moveit::planning_interface::MoveItErrorCode::SUCCESS);
+    ROS_INFO_NAMED("update_image_J", "Visualizing plan (pose goal) %s", success ? "" : "FAILED");
+    move_group_interface_arm.move();
+
+    ros::Duration(1.0).sleep();
+
+    // calculate J
+    double du1overdx = (tool_dxr1.x-tool_dxl1.x)/(2*initStep);
+    double du1overdy = (tool_dyr1.x-tool_dyl1.x)/(2*initStep);
+    double du1overdz = (tool_dzr1.x-tool_dzl1.x)/(2*initStep);
+    double dv1overdx = (tool_dxr1.y-tool_dxl1.y)/(2*initStep);
+    double dv1overdy = (tool_dyr1.y-tool_dyl1.y)/(2*initStep);
+    double dv1overdz = (tool_dzr1.y-tool_dzl1.y)/(2*initStep);
+
+    double du2overdx = (tool_dxr2.x-tool_dxl2.x)/(2*initStep);
+    double du2overdy = (tool_dyr2.x-tool_dyl2.x)/(2*initStep);
+    double du2overdz = (tool_dzr2.x-tool_dzl2.x)/(2*initStep);
+    double dv2overdx = (tool_dxr2.y-tool_dxl2.y)/(2*initStep);
+    double dv2overdy = (tool_dyr2.y-tool_dyl2.y)/(2*initStep);
+    double dv2overdz = (tool_dzr2.y-tool_dzl2.y)/(2*initStep);
+
+    J_flat[0]=du1overdx;
+    J_flat[1]=du1overdy;
+    J_flat[2]=du1overdz;
+    J_flat[3]=dv1overdx;
+    J_flat[4]=dv1overdy;
+    J_flat[5]=dv1overdz;
+    J_flat[6]=du2overdx;
+    J_flat[7]=du2overdy;
+    J_flat[8]=du2overdz;
+    J_flat[9]=dv2overdx;
+    J_flat[10]=dv2overdy;
+    J_flat[11]=dv2overdz;
+
+    visual_servo::JacobianUpdater::flat2eigen(J, J_flat);
+
+}
+
 void visual_servo::JacobianUpdater::initializeJacobianOri(visual_servo::ImageCapturer& cam1, visual_servo::ImageCapturer& cam2, std::vector<visual_servo::ToolDetector>& detector_list){
     // Ros setups
     ros::AsyncSpinner spinner(4);
@@ -703,6 +890,102 @@ void visual_servo::JacobianUpdater::mainLoopPos(visual_servo::ImageCapturer& cam
         toolPos1 = detector.getCenter();
         detector.detect(image2);
         toolPos2 = detector.getCenter();
+
+        toolPos << toolPos1.x, toolPos1.y, toolPos2.x, toolPos2.y;
+        robotPos << transform.getOrigin().x(), transform.getOrigin().y(), transform.getOrigin().z();
+
+        encDisplFromLast = robotPos-lastRobotPos;
+        std::cout << "robotPosition: " << robotPos <<std::endl;
+        std::cout << "encDisFromLast: " << encDisplFromLast << std::endl;
+
+        pixDisplFromLast = toolPos-lastToolPos;
+        std::cout << "toolPosition: " << toolPos << std::endl;
+        std::cout << "pixelDisFromLast: " << pixDisplFromLast << std::endl;
+
+        std::cout << "J: " << J << std::endl;
+        
+        // update J only if greater than a distance from the last update
+        if (pixDisplFromLast.norm()>= update_pix_step || encDisplFromLast.norm()>= update_enc_step){
+            updateJacobian(pixDisplFromLast, encDisplFromLast);
+            lastToolPos = toolPos;
+            lastRobotPos = robotPos;
+        } 
+
+        std::vector<double> J_full = J_flat;
+
+        Jmsg.data = J_flat;
+        J_pub.publish(Jmsg);
+        ros::spinOnce();
+        rate.sleep();
+    }
+}
+
+void visual_servo::JacobianUpdater::mainLoopPos(visual_servo::ImageCapturer& cam1, visual_servo::ImageCapturer& cam2, std::vector<visual_servo::ToolDetector> & detector_list){
+    ros::Rate rate(10.0);
+
+    initializeJacobian(cam1, cam2, detector_list);
+
+    std_msgs::Float64MultiArray Jmsg;
+    cv::Point toolPos1, toolPos2;
+
+    double roll, pitch, yaw;
+
+    cv::Mat image1, image2;
+
+    ROS_INFO("Jacobian initialized! Ready for Jacobian update.");
+    // loopup current robot pose
+    while (nh.ok()){
+        try{
+            image1 = cam1.getCurrentImage();
+            image2 = cam2.getCurrentImage();
+            // cam1.saveCurrentImage("./along_cam", std::to_string(count)+".png");
+            // cam2.saveCurrentImage("./along_usbcam", std::to_string(count)+".png");
+            // count++;
+
+            listener.lookupTransform("/base_link", "/tool0",  ros::Time(0), transform);
+            break;
+            }
+        catch (tf::TransformException ex){
+            // ROS_ERROR("%s",ex.what());
+            // rate.sleep();
+            }   
+    }
+
+    detector_list[0].detect(image1);
+    toolPos1 = detector_list[0].getCenter();
+    detector_list[1].detect(image2);
+    toolPos2 = detector_list[1].getCenter();
+
+    lastToolPos << toolPos1.x, toolPos1.y, toolPos2.x, toolPos2.y;
+    lastRobotPos << transform.getOrigin().x(), transform.getOrigin().y(), transform.getOrigin().z();
+
+    Eigen::VectorXd encDisplFromLast;
+    Eigen::VectorXd pixDisplFromLast;
+
+    while ((nh.ok())){
+        while (nh.ok()){
+            try{
+                //*** TODO ***
+                // overload detect function to detect a given image, and only capture images in this loop
+                image1 = cam1.getCurrentImage();
+                image2 = cam2.getCurrentImage();
+                // cam1.saveCurrentImage("./along_cam", std::to_string(count)+".png");
+                // cam2.saveCurrentImage("./along_usbcam", std::to_string(count)+".png");
+                count++;
+
+                listener.lookupTransform("/base_link", "/tool0",  ros::Time(0), transform);
+
+                break;
+                }
+            catch (tf::TransformException ex){
+                // ROS_ERROR("%s",ex.what());
+                }   
+        }
+        
+        detector_list[0].detect(image1);
+        toolPos1 = detector_list[0].getCenter();
+        detector_list[1].detect(image2);
+        toolPos2 = detector_list[1].getCenter();
 
         toolPos << toolPos1.x, toolPos1.y, toolPos2.x, toolPos2.y;
         robotPos << transform.getOrigin().x(), transform.getOrigin().y(), transform.getOrigin().z();

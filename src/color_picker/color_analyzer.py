@@ -4,7 +4,7 @@ import os
 
 
 if __name__=="__main__":
-    impath = "/home/sanaria/vs_ws/src/ur_visual_servo/src/color_picker/usbcam1.png"
+    impath = "/home/sanaria/vs_ws/src/ur_visual_servo/src/color_picker/usbcam198.png"
     img = cv2.imread(impath, cv2.IMREAD_COLOR)
     hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
     for i in range(10):

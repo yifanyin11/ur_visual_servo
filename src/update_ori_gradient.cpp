@@ -9,8 +9,8 @@ int main(int argc, char** argv){
     ros::NodeHandle nh;
     
     // image topics
-    std::string img_topic1 = "/camera/image_raw";
-    std::string img_topic2 = "/usb_cam/image_raw";
+    std::string img_topic1 = "/webcam/image_raw";
+    std::string img_topic2 = "/ptzcam/image_raw";
 
     // detection setups
     visual_servo::ImageCapturer cam1(nh, img_topic1);

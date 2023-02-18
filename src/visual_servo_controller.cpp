@@ -380,7 +380,7 @@ std::vector<visual_servo::ToolDetector>& detector_list){
     std::cout << "\n" << std::endl;
 }
 
-void visual_servo::VisualServoController::uniOriDirectionIncrement(Eigen::VectorXd& increment, ImageCapturer& cam1, ImageCapturer& cam2, std::vector<ToolDetector>& detector_list){
+void visual_servo::VisualServoController::uniOriDirectionIncrement(Eigen::VectorXd& increment, ImageCapturer& cam1, ImageCapturer& cam2, std::vector<ToolDetector>& detector_list, bool sep){
     ros::Rate loopRate(freq);
 
     while(nh.ok()){
@@ -427,28 +427,38 @@ void visual_servo::VisualServoController::uniOriDirectionIncrement(Eigen::Vector
     image1 = cam1.getCurrentImage();
     image2 = cam2.getCurrentImage();
 
-    detector_list[0].detect(image1);
-    toolPos1 = detector_list[0].getCenter();
-    // detector_list[0].drawDetectRes(image1);
-    detector_list[0].detect(image2);
-    toolPos2 = detector_list[0].getCenter();
-    // detector_list[0].drawDetectRes(image2);
+    if (sep){
+        detector_list[0].detect(image1);
+        toolPos1 = detector_list[0].getCenter();
+        detector_list[0].drawDetectRes(image1);
+        detector_list[1].detect(image2);
+        toolPos2 = detector_list[1].getCenter();
+        detector_list[1].drawDetectRes(image2);
 
-    detector_list[1].detect(image1);
-    tooltipPos1 = detector_list[1].getCenter();
-    // detector_list[1].drawDetectRes(image1);
-    detector_list[1].detect(image2);
-    tooltipPos2 = detector_list[1].getCenter();
-    // detector_list[1].drawDetectRes(image2);
+        detector_list[2].detect(image1);
+        tooltipPos1 = detector_list[2].getCenter();
+        detector_list[2].drawDetectRes(image1);
+        detector_list[3].detect(image2);
+        tooltipPos2 = detector_list[3].getCenter();
+        detector_list[3].drawDetectRes(image2);
+    }
+    else{
+        detector_list[0].detect(image1);
+        toolPos1 = detector_list[0].getCenter();
+        // detector_list[0].drawDetectRes(image1);
+        detector_list[0].detect(image2);
+        toolPos2 = detector_list[0].getCenter();
+        // detector_list[0].drawDetectRes(image2);
 
-    detector_list[2].detect(image1);
-    toolframePos1 = detector_list[2].getCenter();
-    // detector_list[2].drawDetectRes(image1);
-    detector_list[2].detect(image2);
-    toolframePos2 = detector_list[2].getCenter();
-    // detector_list[2].drawDetectRes(image2);
+        detector_list[1].detect(image1);
+        tooltipPos1 = detector_list[1].getCenter();
+        // detector_list[1].drawDetectRes(image1);
+        detector_list[1].detect(image2);
+        tooltipPos2 = detector_list[1].getCenter();
+        // detector_list[1].drawDetectRes(image2);
+    }
 
-    visual_servo::VisualServoController::getToolRot(toolRot, toolPos1, tooltipPos1, toolframePos1, toolPos2, tooltipPos2, toolframePos2);
+    visual_servo::VisualServoController::getToolRot(toolRot, toolPos1, tooltipPos1, tooltipPos1, toolPos2, tooltipPos2, tooltipPos2);
     std::cout << "got tool rot!" << std::endl;
     energyU.resize(num_features/2);
     toolRotU.resize(num_features/2);
@@ -482,6 +492,8 @@ void visual_servo::VisualServoController::uniOriDirectionIncrement(Eigen::Vector
     std::cout << "increment: " << increment << std::endl;
     std::cout << "\n" << std::endl;
 }
+
+
 
 void visual_servo::VisualServoController::poseDirectionIncrement(Eigen::VectorXd& increment, visual_servo::ImageCapturer& cam1, visual_servo::ImageCapturer& cam2, 
 std::vector<visual_servo::ToolDetector>& detector_list){

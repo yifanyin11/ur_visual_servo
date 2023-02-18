@@ -104,7 +104,7 @@ namespace visual_servo{
             void directionIncrement(Eigen::VectorXd& inc, ImageCapturer& cam1, ImageCapturer& cam2, ToolDetector& detector);
             void directionIncrement(Eigen::VectorXd& inc, ImageCapturer& cam1, ImageCapturer& cam2, std::vector<ToolDetector>& detector_list);
             void oriDirectionIncrement(Eigen::VectorXd& inc, ImageCapturer& cam1, ImageCapturer& cam2, std::vector<ToolDetector>& detector_list);
-            void uniOriDirectionIncrement(Eigen::VectorXd& inc, ImageCapturer& cam1, ImageCapturer& cam2, std::vector<ToolDetector>& detector_list);
+            void uniOriDirectionIncrement(Eigen::VectorXd& inc, ImageCapturer& cam1, ImageCapturer& cam2, std::vector<ToolDetector>& detector_list, bool sep=false);
             void poseDirectionIncrement(Eigen::VectorXd& inc, ImageCapturer& cam1, ImageCapturer& cam2, std::vector<ToolDetector>& detector_list);
             // utils
             static void vecEigen2std(Eigen::VectorXd& ve, std::vector<double>& vs);

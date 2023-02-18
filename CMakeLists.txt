@@ -86,10 +86,9 @@ generate_messages(
 ################################################
 
 ## Generate dynamic reconfigure parameters in the 'cfg' folder
-# generate_dynamic_reconfigure_options(
-#   cfg/DynReconf1.cfg
-#   cfg/DynReconf2.cfg
-# )
+generate_dynamic_reconfigure_options(
+  config/color_seg.cfg
+)
 
 ###################################
 ## catkin specific configuration ##
@@ -161,6 +160,7 @@ target_link_libraries(robot_homing ${catkin_LIBRARIES} ${Boost_LIBRARIES} yaml-c
 
 add_executable(cv_detection_test src/cv_detection_test.cpp)
 target_link_libraries(cv_detection_test image_capturer tool_detector ${catkin_LIBRARIES} ${Boost_LIBRARIES})
+add_dependencies(cv_detection_test ${PROJECT_NAME}_gencfg)
 
 add_executable(update_image_J src/update_image_J.cpp)
 target_link_libraries(update_image_J image_capturer tool_detector Jacobian_updater ${catkin_LIBRARIES} ${Boost_LIBRARIES})

@@ -43,8 +43,10 @@ namespace visual_servo{
         void track(ImageCapturer& cam, double roir_width=0.25, double roir_height=0.25);
         void track(cv::Mat& img, ImageCapturer& cam, double roir_width=0.25, double roir_height=0.25);
         void dlDetect(cv::Mat& img, cv::Point2d& drivertip, cv::Point2d& screwcup);
+        void dlDetect(ImageCapturer& cam, cv::Point2d& drivertip, cv::Point2d& screwcup);
         void drawDetectRes(); 
         void drawDetectRes(cv::Mat img); 
+        void drawDetectRes(cv::Mat img, cv::Point2d point); 
     };
 } // namespace visual_servo
 

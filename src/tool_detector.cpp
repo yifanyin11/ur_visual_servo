@@ -258,6 +258,7 @@ void visual_servo::ToolDetector::track(cv::Mat& image, ImageCapturer& cam, doubl
 }
 
 void visual_servo::ToolDetector::dlDetect(cv::Mat& img, cv::Point2d& drivertip, cv::Point2d& screwcup){
+    image = img.clone();
     cv_bridge::CvImage img_bridge;
     sensor_msgs::Image img_msg;
     std_msgs::Header header; // empty header
@@ -280,6 +281,32 @@ void visual_servo::ToolDetector::dlDetect(cv::Mat& img, cv::Point2d& drivertip, 
     }
 }
 
+void visual_servo::ToolDetector::dlDetect(ImageCapturer& cam, cv::Point2d& drivertip, cv::Point2d& screwcup){
+    // update source image
+    image = cam.getCurrentImage();
+    cv_bridge::CvImage img_bridge;
+    sensor_msgs::Image img_msg;
+    std_msgs::Header header; // empty header
+    header.seq = 0; // user defined counter
+    header.stamp = ros::Time::now(); // time
+    img_bridge = cv_bridge::CvImage(header, sensor_msgs::image_encodings::RGB8, image);
+    img_bridge.toImageMsg(img_msg);
+
+    dl_service::dl_detection srv;
+    srv.request.image = img_msg;
+
+    if (!cli.call(srv)){
+        ROS_ERROR("failed to call image capture in tool_detector");
+        drivertip.x = -1.0;
+        drivertip.y = -1.0;
+    }
+    else{
+        drivertip.x = srv.response.coordinates[0];
+        drivertip.y = srv.response.coordinates[1];
+        std::cout << drivertip.x << " " << drivertip.y << std::endl;
+    }
+}
+
 void visual_servo::ToolDetector::drawDetectRes(){
     cv::Mat img = image.clone();
     cv::Mat imgr = image.clone();
@@ -297,6 +324,17 @@ void visual_servo::ToolDetector::drawDetectRes(cv::Mat img_){
     cv::Mat imgr = img_.clone();
     cv::rectangle(img, corner1, corner2, cv::Scalar(0, 0, 0), 1, cv::LINE_8);
     cv::circle(img, tool_center, 3, cv::Scalar(255, 0, 0), -1);
+    cv::resize(img, imgr, cv::Size(), 0.75, 0.75);
+    cv::namedWindow("Detection_Result");
+    cv::imshow("Detection_Result", imgr);
+    cv::waitKey(0);
+    cv::destroyAllWindows();
+}
+
+void visual_servo::ToolDetector::drawDetectRes(cv::Mat img_, cv::Point2d point){
+    cv::Mat img = img_.clone();
+    cv::Mat imgr = img_.clone();
+    cv::circle(img, point, 3, cv::Scalar(255, 0, 0), -1);
     cv::resize(img, imgr, cv::Size(), 0.75, 0.75);
     cv::namedWindow("Detection_Result");
     cv::imshow("Detection_Result", imgr);

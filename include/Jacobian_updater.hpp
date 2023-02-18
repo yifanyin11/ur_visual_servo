@@ -90,11 +90,13 @@ namespace visual_servo{
         static bool runLM(const OptimData& optim_data, const std::vector<double>& initial_state, std::vector<double>& result);
         // initialization function
         void initializeJacobian(ImageCapturer& cam1, ImageCapturer& cam2, ToolDetector& detector);
+        void initializeJacobian(ImageCapturer& cam1, ImageCapturer& cam2, std::vector<ToolDetector>& detector_list);
         void initializeJacobianOri(ImageCapturer& cam1, ImageCapturer& cam2, std::vector<ToolDetector>& detector_list);
         // update funcion
         void updateJacobian(Eigen::VectorXd& del_Px, Eigen::VectorXd& del_x, bool if_ori);
         // main loop
         void mainLoopPos(ImageCapturer& cam1, ImageCapturer& cam2, ToolDetector& detector);
+        void mainLoopPos(ImageCapturer& cam1, ImageCapturer& cam2, std::vector<ToolDetector>& detector_list);
         void mainLoop(ImageCapturer& cam1, ImageCapturer& cam2, std::vector<ToolDetector>& detector_list);
         // utils
         static void flat2eigen(Eigen::MatrixXd& M, const double* flat);
