@@ -58,8 +58,8 @@ int main(int argc, char** argv){
     // target topics
     std::string t_topic = "/visual_servo/targets";
     // image topics
-    std::string img_topic1 = "/webcam/image_raw";
-    std::string img_topic2 = "/ptzcam/image_raw";
+    std::string img_topic1 = "/ptzcam/image_raw";
+    std::string img_topic2 = "/webcam/image_raw";
 
     // detection setups
     visual_servo::ImageCapturer cam1(nh, img_topic1);
@@ -91,7 +91,7 @@ int main(int argc, char** argv){
     std::vector<visual_servo::ToolDetector> detector_list{detector_tool_cam1, detector_tool_cam2, detector_blue_cam1, detector_blue_cam2};
 
     while(nh.ok()&&(!servo_controller.stopSign())){
-        servo_controller.uniOriDirectionIncrement(increment, cam1, cam2, detector_list);
+        servo_controller.uniOriDirectionIncrement(increment, cam1, cam2, detector_list, true);
         // servo_controller.oriDirectionIncrement(increment, cam1, cam2, detector_list);
         std::cout << "Done increment" << std::endl;
 

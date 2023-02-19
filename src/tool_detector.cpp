@@ -278,12 +278,18 @@ void visual_servo::ToolDetector::dlDetect(cv::Mat& img, cv::Point2d& drivertip, 
     else{
         drivertip.x = srv.response.coordinates[0];
         drivertip.y = srv.response.coordinates[1];
+        std::cout << drivertip.x << " " << drivertip.y << std::endl;
+        std::cout << srv.response.confidence << std::endl;
     }
 }
 
 void visual_servo::ToolDetector::dlDetect(ImageCapturer& cam, cv::Point2d& drivertip, cv::Point2d& screwcup){
     // update source image
     image = cam.getCurrentImage();
+    // cv::namedWindow("img");
+    // cv::imshow("img", image);
+    // cv::waitKey(0);
+    // cv::destroyAllWindows();
     cv_bridge::CvImage img_bridge;
     sensor_msgs::Image img_msg;
     std_msgs::Header header; // empty header
@@ -304,6 +310,7 @@ void visual_servo::ToolDetector::dlDetect(ImageCapturer& cam, cv::Point2d& drive
         drivertip.x = srv.response.coordinates[0];
         drivertip.y = srv.response.coordinates[1];
         std::cout << drivertip.x << " " << drivertip.y << std::endl;
+        std::cout << srv.response.confidence << std::endl;
     }
 }
 

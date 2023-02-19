@@ -39,6 +39,15 @@ cv::Mat visual_servo::ImageCapturer::getCurrentImage(){
         // cv::destroyAllWindows();
         rate.sleep();
     }
+    while(nh.ok()){
+        ros::spinOnce();
+        // std::cout << "count outside callback: " << count << std::endl;
+        // cv::namedWindow("get");
+        // cv::imshow("get", img_ptr->image);
+        // cv::waitKey(0);
+        // cv::destroyAllWindows();
+        break;
+    }
     return (img_ptr->image).clone();
 }
 

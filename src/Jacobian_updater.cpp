@@ -831,6 +831,7 @@ void visual_servo::JacobianUpdater::mainLoopPos(visual_servo::ImageCapturer& cam
 
     std_msgs::Float64MultiArray Jmsg;
     cv::Point toolPos1, toolPos2;
+    cv::Point toolPos1_temp, toolPos2_temp;
 
     double roll, pitch, yaw;
 
@@ -855,9 +856,9 @@ void visual_servo::JacobianUpdater::mainLoopPos(visual_servo::ImageCapturer& cam
             }   
     }
 
-    detector.detect(image1);
+    detector.firstDetect(cam1);
     toolPos1 = detector.getCenter();
-    detector.detect(image2);
+    detector.firstDetect(cam2);
     toolPos2 = detector.getCenter();
 
     lastToolPos << toolPos1.x, toolPos1.y, toolPos2.x, toolPos2.y;
@@ -871,8 +872,8 @@ void visual_servo::JacobianUpdater::mainLoopPos(visual_servo::ImageCapturer& cam
             try{
                 //*** TODO ***
                 // overload detect function to detect a given image, and only capture images in this loop
-                image1 = cam1.getCurrentImage();
-                image2 = cam2.getCurrentImage();
+                // image1 = cam1.getCurrentImage();
+                // image2 = cam2.getCurrentImage();
                 // cam1.saveCurrentImage("./along_cam", std::to_string(count)+".png");
                 // cam2.saveCurrentImage("./along_usbcam", std::to_string(count)+".png");
                 count++;
@@ -887,9 +888,18 @@ void visual_servo::JacobianUpdater::mainLoopPos(visual_servo::ImageCapturer& cam
         }
         
         detector.detect(image1);
-        toolPos1 = detector.getCenter();
+        toolPos1_temp = detector.getCenter();
         detector.detect(image2);
-        toolPos2 = detector.getCenter();
+        toolPos2_temp = detector.getCenter();
+
+        if (cv::norm(cv::Mat(toolPos1_temp),cv::Mat(toolPos1))<=20.0){
+            toolPos1 = toolPos1_temp;
+        }
+
+        if (cv::norm(cv::Mat(toolPos2_temp),cv::Mat(toolPos2))<=20.0){
+            toolPos2 = toolPos2_temp;
+        }
+
 
         toolPos << toolPos1.x, toolPos1.y, toolPos2.x, toolPos2.y;
         robotPos << transform.getOrigin().x(), transform.getOrigin().y(), transform.getOrigin().z();
@@ -927,6 +937,7 @@ void visual_servo::JacobianUpdater::mainLoopPos(visual_servo::ImageCapturer& cam
 
     std_msgs::Float64MultiArray Jmsg;
     cv::Point toolPos1, toolPos2;
+    cv::Point toolPos1_temp, toolPos2_temp;
 
     double roll, pitch, yaw;
 
@@ -936,8 +947,8 @@ void visual_servo::JacobianUpdater::mainLoopPos(visual_servo::ImageCapturer& cam
     // loopup current robot pose
     while (nh.ok()){
         try{
-            image1 = cam1.getCurrentImage();
-            image2 = cam2.getCurrentImage();
+            // image1 = cam1.getCurrentImage();
+            // image2 = cam2.getCurrentImage();
             // cam1.saveCurrentImage("./along_cam", std::to_string(count)+".png");
             // cam2.saveCurrentImage("./along_usbcam", std::to_string(count)+".png");
             // count++;
@@ -951,9 +962,9 @@ void visual_servo::JacobianUpdater::mainLoopPos(visual_servo::ImageCapturer& cam
             }   
     }
 
-    detector_list[0].detect(image1);
+    detector_list[0].firstDetect(cam1);
     toolPos1 = detector_list[0].getCenter();
-    detector_list[1].detect(image2);
+    detector_list[1].firstDetect(cam2);
     toolPos2 = detector_list[1].getCenter();
 
     lastToolPos << toolPos1.x, toolPos1.y, toolPos2.x, toolPos2.y;
@@ -983,9 +994,17 @@ void visual_servo::JacobianUpdater::mainLoopPos(visual_servo::ImageCapturer& cam
         }
         
         detector_list[0].detect(image1);
-        toolPos1 = detector_list[0].getCenter();
+        toolPos1_temp = detector_list[0].getCenter();
         detector_list[1].detect(image2);
-        toolPos2 = detector_list[1].getCenter();
+        toolPos2_temp = detector_list[1].getCenter();
+
+        if (cv::norm(cv::Mat(toolPos1_temp),cv::Mat(toolPos1))<=20.0){
+            toolPos1 = toolPos1_temp;
+        }
+
+        if (cv::norm(cv::Mat(toolPos2_temp),cv::Mat(toolPos2))<=20.0){
+            toolPos2 = toolPos2_temp;
+        }
 
         toolPos << toolPos1.x, toolPos1.y, toolPos2.x, toolPos2.y;
         robotPos << transform.getOrigin().x(), transform.getOrigin().y(), transform.getOrigin().z();

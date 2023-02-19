@@ -85,11 +85,11 @@ namespace visual_servo{
         static void evalCostFunction(const double *params, int num_inputs, const void *inputs, double *fvec, int *info);
         static bool runLM(const OptimDataG& optim_data, const std::vector<double>& initial_state, std::vector<double>& result);
         // initialization function
-        void initialize(ImageCapturer& cam1, ImageCapturer& cam2, std::vector<ToolDetector>& detector_list);
+        void initialize(ImageCapturer& cam1, ImageCapturer& cam2, std::vector<ToolDetector>& detector_list, bool sep = false);
         // update funcion
         void updateGradient(Eigen::VectorXd& del_Pr, Eigen::VectorXd& del_r);
         // main loop
-        void mainLoop(ImageCapturer& cam1, ImageCapturer& cam2, std::vector<ToolDetector>& detector_list);
+        void mainLoop(ImageCapturer& cam1, ImageCapturer& cam2, std::vector<ToolDetector>& detector_list, bool sep = false);
         // utils
         static void flat2eigen(Eigen::MatrixXd& M, const double* flat);
         static void flat2eigen(Eigen::MatrixXd& M, std::vector<double> flat);

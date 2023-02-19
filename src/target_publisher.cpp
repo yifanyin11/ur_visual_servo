@@ -29,8 +29,8 @@ int main(int argc, char** argv){
 
     ros::Rate rate(10);
     // image topics
-    std::string img_topic1 = "/webcam/image_raw";
-    std::string img_topic2 = "/ptzcam/image_raw";
+    std::string img_topic1 = "/ptzcam/image_raw";
+    std::string img_topic2 = "/webcam/image_raw";
 
     // detection setups
     visual_servo::ImageCapturer cam1(nh, img_topic1);
@@ -48,7 +48,7 @@ int main(int argc, char** argv){
     visual_servo::ToolDetector detector_target_cam2(nh, std::vector<int>{0, 145, 140, 7, 190, 230});
 
     visual_servo::ToolDetector detector_ori_cam1(nh, std::vector<int>{120, 50, 200, 130, 90, 255}); // purple
-    visual_servo::ToolDetector detector_ori_cam2(nh, std::vector<int>{130, 40, 200, 140, 60, 250});
+    visual_servo::ToolDetector detector_ori_cam2(nh, std::vector<int>{130, 25, 170, 160, 60, 250});
 
     int num_features = 4;
     int dof = 6;
