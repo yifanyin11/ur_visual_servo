@@ -83,9 +83,9 @@ namespace visual_servo{
 
         public:
             // constructors
-            VisualServoController(ros::NodeHandle& nh, std::string target_topic, double tol, double tol_ori);
+            VisualServoController(ros::NodeHandle& nh, std::string target_topic, double tol=5.0, double tol_ori=0.16);
             // constructor with a fixed target
-            VisualServoController(ros::NodeHandle& nh, Eigen::VectorXd& targets, double tol, double tol_ori);
+            VisualServoController(ros::NodeHandle& nh, Eigen::VectorXd& targets, double tol=5.0, double tol_ori=0.16);
             // destructor
             ~VisualServoController(){};
             // callbacks

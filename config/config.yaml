@@ -1,7 +1,7 @@
 home_position:
-  wrist_1_joint: 0.5342725515365601
-  wrist_3_joint: -2.711905304585592
-  shoulder_pan_joint: -1.559926811848776
-  wrist_2_joint: 1.998288989067078
-  shoulder_lift_joint: -1.987044159566061
-  elbow_joint: -2.195724789296285
+  wrist_1_joint: 0.5109845399856567
+  wrist_3_joint: -2.711953226719992
+  shoulder_pan_joint: -1.488343063985006
+  wrist_2_joint: 1.929520130157471
+  shoulder_lift_joint: -2.069339577351705
+  elbow_joint: -2.021755043660299

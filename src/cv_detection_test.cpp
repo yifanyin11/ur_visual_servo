@@ -48,19 +48,25 @@ int main(int argc, char** argv){
     visual_servo::ImageCapturer cam1(nh, img_topic1);
     visual_servo::ImageCapturer cam2(nh, img_topic2);
 
-    // visual_servo::ToolDetector detector_red_cam1(nh, std::vector<int>{165, 80, 200, 180, 190, 225}); 
+    // visual_servo::ToolDetector detector_red_cam1(nh, std::vector<int>{165, 80, 200, 180, 190, 225}); // night
     // visual_servo::ToolDetector detector_red_cam2(nh, std::vector<int>{0, 145, 140, 7, 190, 230});
 
-    // visual_servo::ToolDetector detector_blue_cam1(nh, std::vector<int>{103, 220, 140, 109, 255, 179});
+    // visual_servo::ToolDetector detector_red_cam1(nh, std::vector<int>{165, 60, 200, 180, 190, 255}); // day
+    // visual_servo::ToolDetector detector_red_cam2(nh, std::vector<int>{0, 135, 140, 10, 190, 255});
+
+    // visual_servo::ToolDetector detector_blue_cam1(nh, std::vector<int>{103, 220, 140, 109, 255, 179}); // night
     // visual_servo::ToolDetector detector_blue_cam2(nh, std::vector<int>{103, 130, 140, 109, 255, 179});
 
-    // visual_servo::ToolDetector detector_purple_cam1(nh, std::vector<int>{120, 50, 200, 130, 90, 255});
+    // visual_servo::ToolDetector detector_blue_cam1(nh, std::vector<int>{100, 170, 140, 109, 255, 255}); // day
+    // visual_servo::ToolDetector detector_blue_cam2(nh, std::vector<int>{100, 100, 140, 109, 255, 179});
+
+    // visual_servo::ToolDetector detector_purple_cam1(nh, std::vector<int>{120, 30, 200, 145, 90, 255});
     // visual_servo::ToolDetector detector_purple_cam2(nh, std::vector<int>{130, 25, 170, 160, 60, 250});
 
     // visual_servo::ToolDetector detector_red(nh, std::vector<int>{0, 60, 140, 9, 190, 255});
     // visual_servo::ToolDetector detector_red(nh, std::vector<int>{175, 170, 80, 180, 190, 225});
 
-    int count = 299;
+    int count = 0;
     cv::Point2d tip1, tip2;
     // cv::Mat img;
     // img = cv::imread("/home/sanaria/Downloads/train1_91.png");

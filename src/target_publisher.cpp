@@ -47,7 +47,7 @@ int main(int argc, char** argv){
     visual_servo::ToolDetector detector_target_cam1(nh, std::vector<int>{165, 80, 200, 180, 190, 225}); // red
     visual_servo::ToolDetector detector_target_cam2(nh, std::vector<int>{0, 145, 140, 7, 190, 230});
 
-    visual_servo::ToolDetector detector_ori_cam1(nh, std::vector<int>{120, 50, 200, 130, 90, 255}); // purple
+    visual_servo::ToolDetector detector_ori_cam1(nh, std::vector<int>{120, 30, 200, 145, 90, 255}); // purple
     visual_servo::ToolDetector detector_ori_cam2(nh, std::vector<int>{130, 25, 170, 160, 60, 250});
 
     int num_features = 4;

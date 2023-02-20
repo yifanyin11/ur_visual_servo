@@ -5,7 +5,7 @@
 // ####################
 
 // constructors
-visual_servo::VisualServoController::VisualServoController(ros::NodeHandle& nh, std::string target_topic, double tol=5, double tol_ori=0.16) :
+visual_servo::VisualServoController::VisualServoController(ros::NodeHandle& nh, std::string target_topic, double tol, double tol_ori) :
     nh(nh){
 
     tolerance = tol;
@@ -15,9 +15,9 @@ visual_servo::VisualServoController::VisualServoController(ros::NodeHandle& nh, 
     num_features = 4;
     freq = 100;
     servoMaxStep = 0.2;
-    servoAngMaxStep = 0.25;
+    servoAngMaxStep = 0.5;
     K = 0.3;
-    K_ori = 0.3;
+    K_ori = 0.9;
     constJTh = 10;
     constJTh_ori = 0.16;
 
@@ -53,7 +53,7 @@ visual_servo::VisualServoController::VisualServoController(ros::NodeHandle& nh, 
     controlErrorOriU(0)=DBL_MAX; 
 }
 
-visual_servo::VisualServoController::VisualServoController(ros::NodeHandle& nh, Eigen::VectorXd& targets_, double tol=5, double tol_ori=0.16) :
+visual_servo::VisualServoController::VisualServoController(ros::NodeHandle& nh, Eigen::VectorXd& targets_, double tol, double tol_ori) :
     nh(nh){
 
     tolerance = tol;
@@ -64,9 +64,9 @@ visual_servo::VisualServoController::VisualServoController(ros::NodeHandle& nh, 
     num_features = 4;
     freq = 100;
     servoMaxStep = 0.2;
-    servoAngMaxStep = 0.25;
+    servoAngMaxStep = 0.5;
     K = 0.3;
-    K_ori = 0.3;
+    K_ori = 0.9;
     constJTh = 10;
     constJTh_ori = 0.16;
 
@@ -472,6 +472,7 @@ void visual_servo::VisualServoController::uniOriDirectionIncrement(Eigen::Vector
         increment.setZero();
         continueLoop = false;
         ROS_INFO("Final orientation error: %.3f", visual_servo::VisualServoController::getRotDis(toolRotU, target));
+        ROS_INFO("Final energy: %.3f", energyU.norm());
         ROS_INFO("Reach given accuracy, visual servo stopped!");
         return;
     }
