@@ -14,14 +14,6 @@
 #include <pixel_picker.hpp>
 #include <image_capturer.hpp>
 
-
-void vecEigen2std(Eigen::VectorXd& ve, std::vector<double>& vs){
-    if (ve.size()!=vs.size()) vs.resize(ve.size());
-    for (int i=0; i<ve.size(); ++i){
-        vs[i] = ve(i);
-    }
-}
-
 void getToolRot(Eigen::VectorXd& toolRot, cv::Point2d& center1, cv::Point2d& tooltip1, cv::Point2d& frametip1, cv::Point2d& center2, cv::Point2d& tooltip2, cv::Point2d& frametip2){
     double theta11 = atan2((tooltip1-center1).y, (tooltip1-center1).x); 
     double theta12 = atan2((frametip1-center1).y, (frametip1-center1).x); 
@@ -40,6 +32,7 @@ int main(int argc, char** argv){
     ros::Rate rate(10);
 
     int num_features = 4;
+    int num_targets = 3;
     
     // image topics
     std::string img_topic1 = "/ptzcam/image_raw";
@@ -57,36 +50,62 @@ int main(int argc, char** argv){
     PixelPicker picker;
     picker.set_shrink_height(1.0);
 
-    Eigen::VectorXd target_pos, target_ori, target_full;
-    target_pos.resize(num_features);
+    std::vector<double> targets;
+
+    Eigen::VectorXd target_ori;
     target_ori.resize(num_features);
-    target_full.resize(num_features*2);
 
-    std::cout << "Pick top center for the target in cam1 ..." << std::endl;
-    cv::Point2d target1 = picker.pickOne(img_target1);
-    std::cout << "Pick base for the target in cam1 ..." << std::endl;
-    cv::Point2d target_tip1 = picker.pickOne(img_target1);
-    std::cout << "Pick top center for the target in cam2 ..." << std::endl;
-    cv::Point2d target2 = picker.pickOne(img_target2);
-    std::cout << "Pick base for the target in cam2 ..." << std::endl;
-    cv::Point2d target_tip2 = picker.pickOne(img_target2);
+    for (int i=0; i<num_targets; ++i){
+        std::cout << "Pick top center for target" << std::to_string(i) << " in cam1 ..." << std::endl;
+        cv::Point2d target1 = picker.pickOne(img_target1);
+        std::cout << "Pick base for target" << std::to_string(i) << " in cam1 ..." << std::endl;
+        cv::Point2d target_tip1 = picker.pickOne(img_target1);
+        std::cout << "Pick top center for target" << std::to_string(i) << " in cam2 ..." << std::endl;
+        cv::Point2d target2 = picker.pickOne(img_target2);
+        std::cout << "Pick base for target" << std::to_string(i) << " in cam2 ..." << std::endl;
+        cv::Point2d target_tip2 = picker.pickOne(img_target2);
 
-    target_pos << target1.x, target1.y, target2.x, target2.y;
+        targets.push_back(target1.x);
+        targets.push_back(target1.y);
+        targets.push_back(target2.x);
+        targets.push_back(target2.y);
 
-    target_tip1 = 2*target1-target_tip1;
-    target_tip2 = 2*target2-target_tip2;
+        target_tip1 = 2*target1-target_tip1;
+        target_tip2 = 2*target2-target_tip2;
 
-    getToolRot(target_ori, target1, target_tip1, target_tip1, target2, target_tip2, target_tip2);
-    target_full << target_pos, target_ori;
+        getToolRot(target_ori, target1, target_tip1, target_tip1, target2, target_tip2, target_tip2);
 
-    std::cout << "Done initialize targets" << target_full << std::endl;
+        targets.push_back(target_ori[0]);
+        targets.push_back(target_ori[1]);
+        targets.push_back(target_ori[2]);
+        targets.push_back(target_ori[3]);
+    }
+
+    //** one target
+    // std::cout << "Pick top center for the target in cam1 ..." << std::endl;
+    // cv::Point2d target1 = picker.pickOne(img_target1);
+    // std::cout << "Pick base for the target in cam1 ..." << std::endl;
+    // cv::Point2d target_tip1 = picker.pickOne(img_target1);
+    // std::cout << "Pick top center for the target in cam2 ..." << std::endl;
+    // cv::Point2d target2 = picker.pickOne(img_target2);
+    // std::cout << "Pick base for the target in cam2 ..." << std::endl;
+    // cv::Point2d target_tip2 = picker.pickOne(img_target2);
+
+    // target_pos << target1.x, target1.y, target2.x, target2.y;
+
+    // target_tip1 = 2*target1-target_tip1;
+    // target_tip2 = 2*target2-target_tip2;
+
+    // getToolRot(target_ori, target1, target_tip1, target_tip1, target2, target_tip2, target_tip2);
+    // target_full << target_pos, target_ori;
+
+    // std::cout << "Done initialize targets" << target_full << std::endl;
 
     std_msgs::Float64MultiArray Tmsgs;
 
-    std::vector<double> targets_std(target_full.size(), 0.0);
-    vecEigen2std(target_full, targets_std);
+    if (targets.size()!=2*num_features*num_targets) ROS_ERROR("Incorrect target dimension!");
 
-    Tmsgs.data = targets_std;
+    Tmsgs.data = targets;
 
     while(nh.ok()){
         target_pub.publish(Tmsgs);

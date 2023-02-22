@@ -14,10 +14,10 @@ nh(nh), image_topic(img_topic){
 void visual_servo::ImageCapturer::imageCallback(const sensor_msgs::ImageConstPtr& msg){
     try{
             // for test only
-            if (!received) received = true;
             // std::cout << "count in callback: " << count << std::endl;
 
             img_ptr = cv_bridge::toCvCopy(msg, "bgr8");
+            if (!received) received = true;
             // cv::namedWindow("raw");
             // cv::imshow("raw", img_ptr->image);
             // cv::waitKey(0);
