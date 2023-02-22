@@ -1,6 +1,6 @@
 #include "pixel_picker.hpp"
 
-PixelPicker::PixelPicker(double shrink_height_=0.75, int dot_radius_=5){
+PixelPicker::PixelPicker(double shrink_height_, int dot_radius_){
     shrink_height = shrink_height_;
     dot_radius = dot_radius_;
     point.x = -1;
@@ -8,7 +8,7 @@ PixelPicker::PixelPicker(double shrink_height_=0.75, int dot_radius_=5){
 }
 
 
-cv::Point PixelPicker::pickOne(cv::Mat img){
+cv::Point2d PixelPicker::pickOne(cv::Mat img){
     // First create the image with alpha channel
     cv::cvtColor(img, rgba, cv::COLOR_RGB2RGBA);
     std::vector<cv::Mat> channels(4);
@@ -28,7 +28,7 @@ cv::Point PixelPicker::pickOne(cv::Mat img){
     cv::waitKey(0);
     cv::destroyAllWindows();
 
-    return point;
+    return cv::Point2d((double)point.x, (double)point.y);
 }
 
 // mutators

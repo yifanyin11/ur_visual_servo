@@ -69,9 +69,14 @@ namespace visual_servo{
         Eigen::MatrixXd G_ori;
         std::vector<double> G_ori_flat;
 
+        bool stopSign;
+
         // publishers
         ros::Publisher G_pub;
         ros::Subscriber T_sub;
+
+        // subscribers
+        ros::Subscriber stop_sub;
 
     public:
         // constructors
@@ -81,22 +86,23 @@ namespace visual_servo{
         ~GradientUpdater(){};
         // callbacks
         void targetCallback(const std_msgs::Float64MultiArray::ConstPtr& msg);
+        void stopCallback(const std_msgs::Bool::ConstPtr& msg);
         // static functions for optimization
         static void evalCostFunction(const double *params, int num_inputs, const void *inputs, double *fvec, int *info);
         static bool runLM(const OptimDataG& optim_data, const std::vector<double>& initial_state, std::vector<double>& result);
         // initialization function
-        void initialize(ImageCapturer& cam1, ImageCapturer& cam2, std::vector<ToolDetector>& detector_list, bool sep = false);
+        void initialize(ImageCapturer& cam1, ImageCapturer& cam2, std::vector<ToolDetector>& detector_list, bool dl_on = false, bool sep = false);
         // update funcion
         void updateGradient(Eigen::VectorXd& del_Pr, Eigen::VectorXd& del_r);
         // main loop
-        void mainLoop(ImageCapturer& cam1, ImageCapturer& cam2, std::vector<ToolDetector>& detector_list, bool sep = false);
+        void mainLoop(ImageCapturer& cam1, ImageCapturer& cam2, std::vector<ToolDetector>& detector_list, bool dl_on = false, bool sep = false);
         // utils
         static void flat2eigen(Eigen::MatrixXd& M, const double* flat);
         static void flat2eigen(Eigen::MatrixXd& M, std::vector<double> flat);
         static void flat2eigenVec(Eigen::VectorXd& V, std::vector<double> flat);
         static void transform2PoseMsg(tf::Transform& transform, geometry_msgs::Pose& pose);
         static void poseMsg2Transform(tf::Transform& transform, geometry_msgs::Pose& pose);
-        static void getToolRot(Eigen::VectorXd& toolRot, cv::Point& center1, cv::Point& tooltip1, cv::Point& frametip1, cv::Point& center2, cv::Point& tooltip2, cv::Point& frametip2);
+        static void getToolRot(Eigen::VectorXd& toolRot, cv::Point2d& center1, cv::Point2d& tooltip1, cv::Point2d& frametip1, cv::Point2d& center2, cv::Point2d& tooltip2, cv::Point2d& frametip2);
         static void calculateEnergyFunction(Eigen::VectorXd delToolRot, Eigen::VectorXd& energy);
     };
 

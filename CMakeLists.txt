@@ -178,7 +178,13 @@ add_executable(visual_servo_orientation_test src/visual_servo_orientation_test.c
 target_link_libraries(visual_servo_orientation_test visual_servo_controller image_capturer tool_detector ${catkin_LIBRARIES} ${Boost_LIBRARIES})
 
 add_executable(target_publisher src/target_publisher.cpp)
-target_link_libraries(target_publisher image_capturer tool_detector ${catkin_LIBRARIES} ${Boost_LIBRARIES})
+target_link_libraries(target_publisher image_capturer tool_detector visual_servo_controller ${catkin_LIBRARIES} ${Boost_LIBRARIES})
+
+add_executable(auto_exp src/auto_exp.cpp)
+target_link_libraries(auto_exp image_capturer tool_detector Jacobian_updater visual_servo_controller pixel_picker ${catkin_LIBRARIES} ${Boost_LIBRARIES})
+
+add_executable(label_target_publisher src/label_target_publisher.cpp)
+target_link_libraries(label_target_publisher image_capturer visual_servo_controller pixel_picker ${catkin_LIBRARIES} ${Boost_LIBRARIES})
 
 ## Add cmake target dependencies of the executable
 ## same as for the library above

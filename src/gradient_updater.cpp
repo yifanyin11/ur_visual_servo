@@ -16,6 +16,8 @@ nh(nh){
 
     Tchecked = true;
 
+    stopSign = false;
+
     energy.resize(num_features);
     lastEnergy.resize(num_features);
     toolRot.resize(num_features);
@@ -28,6 +30,9 @@ nh(nh){
 
     // publishers
     G_pub = nh.advertise<std_msgs::Float64MultiArray>(G_topic, 1);
+
+    // subscribers
+    stop_sub = nh.subscribe("/visual_servo/gradient_update_stop", 1, &visual_servo::GradientUpdater::stopCallback, this);
 }
 
 visual_servo::GradientUpdater::GradientUpdater(ros::NodeHandle& nh, std::string& G_topic_, std::string& T_topic_):
@@ -59,9 +64,16 @@ nh(nh){
 
     // subscribers
     T_sub = nh.subscribe(T_topic, 1, &GradientUpdater::targetCallback, this);
+    stop_sub = nh.subscribe("/visual_servo/gradient_update_stop", 1, &visual_servo::GradientUpdater::stopCallback, this);
 
     // publishers
     G_pub = nh.advertise<std_msgs::Float64MultiArray>(G_topic, 1);
+}
+
+void visual_servo::GradientUpdater::stopCallback(const std_msgs::Bool::ConstPtr& msg){
+    if (msg->data){
+        stopSign = true;
+    }
 }
 
 void visual_servo::GradientUpdater::targetCallback(const std_msgs::Float64MultiArray::ConstPtr& msg){
@@ -180,7 +192,7 @@ bool visual_servo::GradientUpdater::runLM(const OptimDataG& optim_data, const st
     return true;
 }
 
-void visual_servo::GradientUpdater::initialize(visual_servo::ImageCapturer& cam1, visual_servo::ImageCapturer& cam2, std::vector<visual_servo::ToolDetector>& detector_list, bool sep){
+void visual_servo::GradientUpdater::initialize(visual_servo::ImageCapturer& cam1, visual_servo::ImageCapturer& cam2, std::vector<visual_servo::ToolDetector>& detector_list, bool dl_on, bool sep){
     // Ros setups
     ros::AsyncSpinner spinner(4);
     spinner.start();
@@ -198,15 +210,15 @@ void visual_servo::GradientUpdater::initialize(visual_servo::ImageCapturer& cam1
     bool success;
 
     // define points
-    cv::Point tool_center1, tool_center2; 
+    cv::Point2d tool_center1, tool_center2; 
 
-    cv::Point toolcenter_drl1, toolcenter_drr1, toolcenter_dpl1, toolcenter_dpr1, toolcenter_dyl1, toolcenter_dyr1; // toolcenter for cam1
-    cv::Point tooltip_drl1, tooltip_drr1, tooltip_dpl1, tooltip_dpr1, tooltip_dyl1, tooltip_dyr1; // tooltip for cam1
-    cv::Point toolframe_drl1, toolframe_drr1, toolframe_dpl1, toolframe_dpr1, toolframe_dyl1, toolframe_dyr1; // tool frame tip for cam1
+    cv::Point2d toolcenter_drl1, toolcenter_drr1, toolcenter_dpl1, toolcenter_dpr1, toolcenter_dyl1, toolcenter_dyr1; // toolcenter for cam1
+    cv::Point2d tooltip_drl1, tooltip_drr1, tooltip_dpl1, tooltip_dpr1, tooltip_dyl1, tooltip_dyr1; // tooltip for cam1
+    cv::Point2d toolframe_drl1, toolframe_drr1, toolframe_dpl1, toolframe_dpr1, toolframe_dyl1, toolframe_dyr1; // tool frame tip for cam1
 
-    cv::Point toolcenter_drl2, toolcenter_drr2, toolcenter_dpl2, toolcenter_dpr2, toolcenter_dyl2, toolcenter_dyr2; // toolcenter for cam1
-    cv::Point tooltip_drl2, tooltip_drr2, tooltip_dpl2, tooltip_dpr2, tooltip_dyl2, tooltip_dyr2; // tooltip for cam2
-    cv::Point toolframe_drl2, toolframe_drr2, toolframe_dpl2, toolframe_dpr2, toolframe_dyl2, toolframe_dyr2; // tool frame tip for cam2
+    cv::Point2d toolcenter_drl2, toolcenter_drr2, toolcenter_dpl2, toolcenter_dpr2, toolcenter_dyl2, toolcenter_dyr2; // toolcenter for cam1
+    cv::Point2d tooltip_drl2, tooltip_drr2, tooltip_dpl2, tooltip_dpr2, tooltip_dyl2, tooltip_dyr2; // tooltip for cam2
+    cv::Point2d toolframe_drl2, toolframe_drr2, toolframe_dpl2, toolframe_dpr2, toolframe_dyl2, toolframe_dyr2; // tool frame tip for cam2
 
     // get current pose
     geometry_msgs::PoseStamped current_pose;
@@ -240,41 +252,65 @@ void visual_servo::GradientUpdater::initialize(visual_servo::ImageCapturer& cam1
     ros::Duration(1.0).sleep();
 
     // detect tool image position at r-
-    if (sep){
-        detector_list[0].detect(cam1);
-        toolcenter_drl1 = detector_list[0].getCenter();
-        // detector_list[0].drawDetectRes(); 
-        detector_list[2].detect(cam1);
-        tooltip_drl1 = detector_list[2].getCenter();
-        // detector_list[2].drawDetectRes(); 
-        detector_list[4].detect(cam1);
-        toolframe_drl1 = detector_list[4].getCenter();
-        // detector_list[4].drawDetectRes(); 
+    if (dl_on){
+        cv::Point2d targetPos1, targetPos2;
+        detector_list[0].dlDetect(cam1, toolcenter_drl1, targetPos1);
+        detector_list[0].drawDetectRes(cam1.getCurrentImage(),  toolcenter_drl1);
 
-        detector_list[1].detect(cam2);
-        toolcenter_drl2 = detector_list[1].getCenter();
-        // detector_list[1].drawDetectRes(); 
-        detector_list[3].detect(cam2);
-        tooltip_drl2 = detector_list[3].getCenter();
-        // detector_list[3].drawDetectRes();
-        detector_list[5].detect(cam2);
-        toolframe_drl2 = detector_list[5].getCenter();
-        // detector_list[5].drawDetectRes();
-    }
-    else{
-        detector_list[0].detect(cam1);
-        toolcenter_drl1 = detector_list[0].getCenter();
         detector_list[1].detect(cam1);
         tooltip_drl1 = detector_list[1].getCenter();
-        detector_list[2].detect(cam1);
-        toolframe_drl1 = detector_list[2].getCenter();
+        // detector_list[1].drawDetectRes(); 
+        detector_list[3].detect(cam1);
+        toolframe_drl1 = detector_list[3].getCenter();
+        // detector_list[3].drawDetectRes(); 
+        
+        detector_list[0].dlDetect(cam2, toolcenter_drl2, targetPos2);
+        detector_list[0].drawDetectRes(cam2.getCurrentImage(),  toolcenter_drl2);
 
-        detector_list[0].detect(cam2);
-        toolcenter_drl2 = detector_list[0].getCenter();
-        detector_list[1].detect(cam2);
-        tooltip_drl2 = detector_list[1].getCenter();
         detector_list[2].detect(cam2);
-        toolframe_drl2 = detector_list[2].getCenter();
+        tooltip_drl2 = detector_list[2].getCenter();
+        // detector_list[2].drawDetectRes();
+        detector_list[4].detect(cam2);
+        toolframe_drl2 = detector_list[4].getCenter();
+        // detector_list[4].drawDetectRes();
+    }
+    else{
+        if (sep){
+            detector_list[0].detect(cam1);
+            toolcenter_drl1 = detector_list[0].getCenter();
+            // detector_list[0].drawDetectRes(); 
+            detector_list[2].detect(cam1);
+            tooltip_drl1 = detector_list[2].getCenter();
+            // detector_list[2].drawDetectRes(); 
+            detector_list[4].detect(cam1);
+            toolframe_drl1 = detector_list[4].getCenter();
+            // detector_list[4].drawDetectRes(); 
+
+            detector_list[1].detect(cam2);
+            toolcenter_drl2 = detector_list[1].getCenter();
+            // detector_list[1].drawDetectRes(); 
+            detector_list[3].detect(cam2);
+            tooltip_drl2 = detector_list[3].getCenter();
+            // detector_list[3].drawDetectRes();
+            detector_list[5].detect(cam2);
+            toolframe_drl2 = detector_list[5].getCenter();
+            // detector_list[5].drawDetectRes();
+        }
+        else{
+            detector_list[0].detect(cam1);
+            toolcenter_drl1 = detector_list[0].getCenter();
+            detector_list[1].detect(cam1);
+            tooltip_drl1 = detector_list[1].getCenter();
+            detector_list[2].detect(cam1);
+            toolframe_drl1 = detector_list[2].getCenter();
+
+            detector_list[0].detect(cam2);
+            toolcenter_drl2 = detector_list[0].getCenter();
+            detector_list[1].detect(cam2);
+            tooltip_drl2 = detector_list[1].getCenter();
+            detector_list[2].detect(cam2);
+            toolframe_drl2 = detector_list[2].getCenter();
+        }
     }
 
     // move to r+
@@ -293,43 +329,66 @@ void visual_servo::GradientUpdater::initialize(visual_servo::ImageCapturer& cam1
     ros::Duration(1.0).sleep();
 
     // detect tool image position at r+
-    if (sep){
-        detector_list[0].detect(cam1);
-        toolcenter_drr1 = detector_list[0].getCenter();
-        // detector_list[0].drawDetectRes();
-        detector_list[2].detect(cam1);
-        tooltip_drr1 = detector_list[2].getCenter();
-        // detector_list[2].drawDetectRes();
-        detector_list[4].detect(cam1);
-        toolframe_drr1 = detector_list[4].getCenter();
-        // detector_list[4].drawDetectRes();
+    if (dl_on){
+        cv::Point2d targetPos1, targetPos2;
+        detector_list[0].dlDetect(cam1, toolcenter_drr1, targetPos1);
+        detector_list[0].drawDetectRes(cam1.getCurrentImage(),  toolcenter_drr1);
 
-        detector_list[1].detect(cam2);
-        toolcenter_drr2 = detector_list[1].getCenter();
-        // detector_list[1].drawDetectRes();
-        detector_list[3].detect(cam2);
-        tooltip_drr2 = detector_list[3].getCenter();
-        // detector_list[3].drawDetectRes();
-        detector_list[5].detect(cam2);
-        toolframe_drr2 = detector_list[5].getCenter();
-        // detector_list[5].drawDetectRes();
-    }
-    else{
-        detector_list[0].detect(cam1);
-        toolcenter_drr1 = detector_list[0].getCenter();
         detector_list[1].detect(cam1);
         tooltip_drr1 = detector_list[1].getCenter();
-        detector_list[2].detect(cam1);
-        toolframe_drr1 = detector_list[2].getCenter();
-
-        detector_list[0].detect(cam2);
-	    toolcenter_drr2 = detector_list[0].getCenter();
-        detector_list[1].detect(cam2);
-        tooltip_drr2 = detector_list[1].getCenter();
+        // detector_list[1].drawDetectRes(); 
+        detector_list[3].detect(cam1);
+        toolframe_drr1 = detector_list[3].getCenter();
+        // detector_list[3].drawDetectRes(); 
+        
+        detector_list[0].dlDetect(cam2, toolcenter_drr2, targetPos2);
+        detector_list[0].drawDetectRes(cam2.getCurrentImage(),  toolcenter_drr2);
+        
         detector_list[2].detect(cam2);
-        toolframe_drr2 = detector_list[2].getCenter();
+        tooltip_drr2 = detector_list[2].getCenter();
+        // detector_list[2].drawDetectRes();
+        detector_list[4].detect(cam2);
+        toolframe_drr2 = detector_list[4].getCenter();
+        // detector_list[4].drawDetectRes();
     }
-    
+    else{
+        if (sep){
+            detector_list[0].detect(cam1);
+            toolcenter_drr1 = detector_list[0].getCenter();
+            // detector_list[0].drawDetectRes();
+            detector_list[2].detect(cam1);
+            tooltip_drr1 = detector_list[2].getCenter();
+            // detector_list[2].drawDetectRes();
+            detector_list[4].detect(cam1);
+            toolframe_drr1 = detector_list[4].getCenter();
+            // detector_list[4].drawDetectRes();
+
+            detector_list[1].detect(cam2);
+            toolcenter_drr2 = detector_list[1].getCenter();
+            // detector_list[1].drawDetectRes();
+            detector_list[3].detect(cam2);
+            tooltip_drr2 = detector_list[3].getCenter();
+            // detector_list[3].drawDetectRes();
+            detector_list[5].detect(cam2);
+            toolframe_drr2 = detector_list[5].getCenter();
+            // detector_list[5].drawDetectRes();
+        }
+        else{
+            detector_list[0].detect(cam1);
+            toolcenter_drr1 = detector_list[0].getCenter();
+            detector_list[1].detect(cam1);
+            tooltip_drr1 = detector_list[1].getCenter();
+            detector_list[2].detect(cam1);
+            toolframe_drr1 = detector_list[2].getCenter();
+
+            detector_list[0].detect(cam2);
+            toolcenter_drr2 = detector_list[0].getCenter();
+            detector_list[1].detect(cam2);
+            tooltip_drr2 = detector_list[1].getCenter();
+            detector_list[2].detect(cam2);
+            toolframe_drr2 = detector_list[2].getCenter();
+        }
+    }
     // move to p-
     q_target.setRPY(roll, pitch-initStepOri, yaw);
     q_target.normalize();
@@ -346,41 +405,65 @@ void visual_servo::GradientUpdater::initialize(visual_servo::ImageCapturer& cam1
     ros::Duration(1.0).sleep();
 
     // detect tool image position at p-
-    if (sep){
-        detector_list[0].detect(cam1);
-        toolcenter_dpl1 = detector_list[0].getCenter();
-        // detector_list[0].drawDetectRes();
-        detector_list[2].detect(cam1);
-        tooltip_dpl1 = detector_list[2].getCenter();
-        // detector_list[2].drawDetectRes();
-        detector_list[4].detect(cam1);
-        toolframe_dpl1 = detector_list[4].getCenter();
-        // detector_list[4].drawDetectRes();
+    if (dl_on){
+        cv::Point2d targetPos1, targetPos2;
+        detector_list[0].dlDetect(cam1, toolcenter_dpl1, targetPos1);
+        detector_list[0].drawDetectRes(cam1.getCurrentImage(),  toolcenter_dpl1);
 
-        detector_list[1].detect(cam2);
-        toolcenter_dpl2 = detector_list[1].getCenter();
-        // detector_list[1].drawDetectRes();
-        detector_list[3].detect(cam2);
-        tooltip_dpl2 = detector_list[3].getCenter();
-        // detector_list[3].drawDetectRes();
-        detector_list[5].detect(cam2);
-        toolframe_dpl2 = detector_list[5].getCenter();
-        // detector_list[5].drawDetectRes();
-    }
-    else{
-        detector_list[0].detect(cam1);
-		toolcenter_dpl1 = detector_list[0].getCenter();
         detector_list[1].detect(cam1);
         tooltip_dpl1 = detector_list[1].getCenter();
-        detector_list[2].detect(cam1);
-        toolframe_dpl1 = detector_list[2].getCenter();
-
-        detector_list[0].detect(cam2);
-		toolcenter_dpl2 = detector_list[0].getCenter();
-        detector_list[1].detect(cam2);
-        tooltip_dpl2 = detector_list[1].getCenter();
+        // detector_list[1].drawDetectRes(); 
+        detector_list[3].detect(cam1);
+        toolframe_dpl1 = detector_list[3].getCenter();
+        // detector_list[3].drawDetectRes(); 
+        
+        detector_list[0].dlDetect(cam2, toolcenter_dpl2, targetPos2);
+        detector_list[0].drawDetectRes(cam2.getCurrentImage(),  toolcenter_dpl2);
+        
         detector_list[2].detect(cam2);
-        toolframe_dpl2 = detector_list[2].getCenter();
+        tooltip_dpl2 = detector_list[2].getCenter();
+        // detector_list[2].drawDetectRes();
+        detector_list[4].detect(cam2);
+        toolframe_dpl2 = detector_list[4].getCenter();
+        // detector_list[4].drawDetectRes();
+    }
+    else{
+        if (sep){
+            detector_list[0].detect(cam1);
+            toolcenter_dpl1 = detector_list[0].getCenter();
+            // detector_list[0].drawDetectRes();
+            detector_list[2].detect(cam1);
+            tooltip_dpl1 = detector_list[2].getCenter();
+            // detector_list[2].drawDetectRes();
+            detector_list[4].detect(cam1);
+            toolframe_dpl1 = detector_list[4].getCenter();
+            // detector_list[4].drawDetectRes();
+
+            detector_list[1].detect(cam2);
+            toolcenter_dpl2 = detector_list[1].getCenter();
+            // detector_list[1].drawDetectRes();
+            detector_list[3].detect(cam2);
+            tooltip_dpl2 = detector_list[3].getCenter();
+            // detector_list[3].drawDetectRes();
+            detector_list[5].detect(cam2);
+            toolframe_dpl2 = detector_list[5].getCenter();
+            // detector_list[5].drawDetectRes();
+        }
+        else{
+            detector_list[0].detect(cam1);
+            toolcenter_dpl1 = detector_list[0].getCenter();
+            detector_list[1].detect(cam1);
+            tooltip_dpl1 = detector_list[1].getCenter();
+            detector_list[2].detect(cam1);
+            toolframe_dpl1 = detector_list[2].getCenter();
+
+            detector_list[0].detect(cam2);
+            toolcenter_dpl2 = detector_list[0].getCenter();
+            detector_list[1].detect(cam2);
+            tooltip_dpl2 = detector_list[1].getCenter();
+            detector_list[2].detect(cam2);
+            toolframe_dpl2 = detector_list[2].getCenter();
+        }
     }
 
     // move to p+
@@ -399,41 +482,65 @@ void visual_servo::GradientUpdater::initialize(visual_servo::ImageCapturer& cam1
     ros::Duration(1.0).sleep();
 
     // detect tool image position at p+
-    if (sep){
-        detector_list[0].detect(cam1);
-        toolcenter_dpr1 = detector_list[0].getCenter();
-        // detector_list[0].drawDetectRes();
-        detector_list[2].detect(cam1);
-        tooltip_dpr1 = detector_list[2].getCenter();
-        // detector_list[2].drawDetectRes();
-        detector_list[4].detect(cam1);
-        toolframe_dpr1 = detector_list[4].getCenter();
-        // detector_list[4].drawDetectRes();
+    if (dl_on){
+        cv::Point2d targetPos1, targetPos2;
+        detector_list[0].dlDetect(cam1, toolcenter_dpr1, targetPos1);
+        detector_list[0].drawDetectRes(cam1.getCurrentImage(),  toolcenter_dpr1);
 
-        detector_list[1].detect(cam2);
-        toolcenter_dpr2 = detector_list[1].getCenter();
-        // detector_list[1].drawDetectRes();
-        detector_list[3].detect(cam2);
-        tooltip_dpr2 = detector_list[3].getCenter();
-        // detector_list[3].drawDetectRes();
-        detector_list[5].detect(cam2);
-        toolframe_dpr2 = detector_list[5].getCenter();
-        // detector_list[5].drawDetectRes();
-    }
-    else{
-        detector_list[0].detect(cam1);
-		toolcenter_dpr1 = detector_list[0].getCenter();
         detector_list[1].detect(cam1);
         tooltip_dpr1 = detector_list[1].getCenter();
-        detector_list[2].detect(cam1);
-        toolframe_dpr1 = detector_list[2].getCenter();
+        // detector_list[1].drawDetectRes(); 
+        detector_list[3].detect(cam1);
+        toolframe_dpr1 = detector_list[3].getCenter();
+        // detector_list[3].drawDetectRes(); 
         
-        detector_list[0].detect(cam2);
-		toolcenter_dpr2 = detector_list[0].getCenter();
-        detector_list[1].detect(cam2);
-        tooltip_dpr2 = detector_list[1].getCenter();
+        detector_list[0].dlDetect(cam2, toolcenter_dpr2, targetPos2);
+        detector_list[0].drawDetectRes(cam2.getCurrentImage(),  toolcenter_dpr2);
+        
         detector_list[2].detect(cam2);
-        toolframe_dpr2 = detector_list[2].getCenter();
+        tooltip_dpr2 = detector_list[2].getCenter();
+        // detector_list[2].drawDetectRes();
+        detector_list[4].detect(cam2);
+        toolframe_dpr2 = detector_list[4].getCenter();
+        // detector_list[4].drawDetectRes();
+    }
+    else{
+        if (sep){
+            detector_list[0].detect(cam1);
+            toolcenter_dpr1 = detector_list[0].getCenter();
+            // detector_list[0].drawDetectRes();
+            detector_list[2].detect(cam1);
+            tooltip_dpr1 = detector_list[2].getCenter();
+            // detector_list[2].drawDetectRes();
+            detector_list[4].detect(cam1);
+            toolframe_dpr1 = detector_list[4].getCenter();
+            // detector_list[4].drawDetectRes();
+
+            detector_list[1].detect(cam2);
+            toolcenter_dpr2 = detector_list[1].getCenter();
+            // detector_list[1].drawDetectRes();
+            detector_list[3].detect(cam2);
+            tooltip_dpr2 = detector_list[3].getCenter();
+            // detector_list[3].drawDetectRes();
+            detector_list[5].detect(cam2);
+            toolframe_dpr2 = detector_list[5].getCenter();
+            // detector_list[5].drawDetectRes();
+        }
+        else{
+            detector_list[0].detect(cam1);
+            toolcenter_dpr1 = detector_list[0].getCenter();
+            detector_list[1].detect(cam1);
+            tooltip_dpr1 = detector_list[1].getCenter();
+            detector_list[2].detect(cam1);
+            toolframe_dpr1 = detector_list[2].getCenter();
+            
+            detector_list[0].detect(cam2);
+            toolcenter_dpr2 = detector_list[0].getCenter();
+            detector_list[1].detect(cam2);
+            tooltip_dpr2 = detector_list[1].getCenter();
+            detector_list[2].detect(cam2);
+            toolframe_dpr2 = detector_list[2].getCenter();
+        }
     }
 
     // move to y-
@@ -452,42 +559,67 @@ void visual_servo::GradientUpdater::initialize(visual_servo::ImageCapturer& cam1
     ros::Duration(1.0).sleep();
 
     // detect tool image position at y-
-    if (sep){
-        detector_list[0].detect(cam1);
-        toolcenter_dyl1 = detector_list[0].getCenter();
-        // detector_list[0].drawDetectRes();
-        detector_list[2].detect(cam1);
-        tooltip_dyl1 = detector_list[2].getCenter();
-        // detector_list[2].drawDetectRes();
-        detector_list[4].detect(cam1);
-        toolframe_dyl1 = detector_list[4].getCenter();
-        // detector_list[4].drawDetectRes();
+    if (dl_on){
+        cv::Point2d targetPos1, targetPos2;
+        detector_list[0].dlDetect(cam1, toolcenter_dyl1, targetPos1);
+        detector_list[0].drawDetectRes(cam1.getCurrentImage(),  toolcenter_dyl1);
 
-        detector_list[1].detect(cam2);
-        toolcenter_dyl2 = detector_list[1].getCenter();
-        // detector_list[1].drawDetectRes();
-        detector_list[3].detect(cam2);
-        tooltip_dyl2 = detector_list[3].getCenter();
-        // detector_list[3].drawDetectRes();
-        detector_list[5].detect(cam2);
-        toolframe_dyl2 = detector_list[5].getCenter();
-        // detector_list[5].drawDetectRes();
-    }
-    else{
-        detector_list[0].detect(cam1);
-		toolcenter_dyl1 = detector_list[0].getCenter();
         detector_list[1].detect(cam1);
         tooltip_dyl1 = detector_list[1].getCenter();
-        detector_list[2].detect(cam1);
-        toolframe_dyl1 = detector_list[2].getCenter();
-
-        detector_list[0].detect(cam2);
-		toolcenter_dyl2 = detector_list[0].getCenter();
-        detector_list[1].detect(cam2);
-        tooltip_dyl2 = detector_list[1].getCenter();
+        // detector_list[1].drawDetectRes(); 
+        detector_list[3].detect(cam1);
+        toolframe_dyl1 = detector_list[3].getCenter();
+        // detector_list[3].drawDetectRes(); 
+        
+        detector_list[0].dlDetect(cam2, toolcenter_dyl2, targetPos2);
+        detector_list[0].drawDetectRes(cam2.getCurrentImage(),  toolcenter_dyl2);
+        
         detector_list[2].detect(cam2);
-        toolframe_dyl2 = detector_list[2].getCenter();
+        tooltip_dyl2 = detector_list[2].getCenter();
+        // detector_list[2].drawDetectRes();
+        detector_list[4].detect(cam2);
+        toolframe_dyl2 = detector_list[4].getCenter();
+        // detector_list[4].drawDetectRes();
     }
+    else{
+        if (sep){
+            detector_list[0].detect(cam1);
+            toolcenter_dyl1 = detector_list[0].getCenter();
+            // detector_list[0].drawDetectRes();
+            detector_list[2].detect(cam1);
+            tooltip_dyl1 = detector_list[2].getCenter();
+            // detector_list[2].drawDetectRes();
+            detector_list[4].detect(cam1);
+            toolframe_dyl1 = detector_list[4].getCenter();
+            // detector_list[4].drawDetectRes();
+
+            detector_list[1].detect(cam2);
+            toolcenter_dyl2 = detector_list[1].getCenter();
+            // detector_list[1].drawDetectRes();
+            detector_list[3].detect(cam2);
+            tooltip_dyl2 = detector_list[3].getCenter();
+            // detector_list[3].drawDetectRes();
+            detector_list[5].detect(cam2);
+            toolframe_dyl2 = detector_list[5].getCenter();
+            // detector_list[5].drawDetectRes();
+        }
+        else{
+            detector_list[0].detect(cam1);
+            toolcenter_dyl1 = detector_list[0].getCenter();
+            detector_list[1].detect(cam1);
+            tooltip_dyl1 = detector_list[1].getCenter();
+            detector_list[2].detect(cam1);
+            toolframe_dyl1 = detector_list[2].getCenter();
+
+            detector_list[0].detect(cam2);
+            toolcenter_dyl2 = detector_list[0].getCenter();
+            detector_list[1].detect(cam2);
+            tooltip_dyl2 = detector_list[1].getCenter();
+            detector_list[2].detect(cam2);
+            toolframe_dyl2 = detector_list[2].getCenter();
+        }
+    }
+
     // move to y+
     q_target.setRPY(roll, pitch, yaw+initStepOri);
     q_target.normalize();
@@ -504,41 +636,65 @@ void visual_servo::GradientUpdater::initialize(visual_servo::ImageCapturer& cam1
     ros::Duration(1.0).sleep();
 
     // detect tool image position at y+
-    if (sep){
-        detector_list[0].detect(cam1);
-        toolcenter_dyr1 = detector_list[0].getCenter();
-        // detector_list[0].drawDetectRes();
-        detector_list[2].detect(cam1);
-        tooltip_dyr1 = detector_list[2].getCenter();
-        // detector_list[2].drawDetectRes();
-        detector_list[4].detect(cam1);
-        toolframe_dyr1 = detector_list[4].getCenter();
-        // detector_list[4].drawDetectRes();
+    if (dl_on){
+        cv::Point2d targetPos1, targetPos2;
+        detector_list[0].dlDetect(cam1, toolcenter_dyr1, targetPos1);
+        detector_list[0].drawDetectRes(cam1.getCurrentImage(),  toolcenter_dyr1);
 
-        detector_list[1].detect(cam2);
-        toolcenter_dyr2 = detector_list[1].getCenter();
-        // detector_list[1].drawDetectRes();
-        detector_list[3].detect(cam2);
-        tooltip_dyr2 = detector_list[3].getCenter();
-        // detector_list[3].drawDetectRes();
-        detector_list[5].detect(cam2);
-        toolframe_dyr2 = detector_list[5].getCenter();
-        // detector_list[5].drawDetectRes();
-    }
-    else{
-        detector_list[0].detect(cam1);
-		toolcenter_dyr1 = detector_list[0].getCenter();
         detector_list[1].detect(cam1);
         tooltip_dyr1 = detector_list[1].getCenter();
-        detector_list[2].detect(cam1);
-        toolframe_dyr1 = detector_list[2].getCenter();
-
-        detector_list[0].detect(cam2);
-		toolcenter_dyr2 = detector_list[0].getCenter();
-        detector_list[1].detect(cam2);
-        tooltip_dyr2 = detector_list[1].getCenter();
+        // detector_list[1].drawDetectRes(); 
+        detector_list[3].detect(cam1);
+        toolframe_dyr1 = detector_list[3].getCenter();
+        // detector_list[3].drawDetectRes(); 
+        
+        detector_list[0].dlDetect(cam2, toolcenter_dyr2, targetPos2);
+        detector_list[0].drawDetectRes(cam2.getCurrentImage(),  toolcenter_dyr2);
+        
         detector_list[2].detect(cam2);
-        toolframe_dyr2 = detector_list[2].getCenter();
+        tooltip_dyr2 = detector_list[2].getCenter();
+        // detector_list[2].drawDetectRes();
+        detector_list[4].detect(cam2);
+        toolframe_dyr2 = detector_list[4].getCenter();
+        // detector_list[4].drawDetectRes();
+    }
+    else{
+        if (sep){
+            detector_list[0].detect(cam1);
+            toolcenter_dyr1 = detector_list[0].getCenter();
+            // detector_list[0].drawDetectRes();
+            detector_list[2].detect(cam1);
+            tooltip_dyr1 = detector_list[2].getCenter();
+            // detector_list[2].drawDetectRes();
+            detector_list[4].detect(cam1);
+            toolframe_dyr1 = detector_list[4].getCenter();
+            // detector_list[4].drawDetectRes();
+
+            detector_list[1].detect(cam2);
+            toolcenter_dyr2 = detector_list[1].getCenter();
+            // detector_list[1].drawDetectRes();
+            detector_list[3].detect(cam2);
+            tooltip_dyr2 = detector_list[3].getCenter();
+            // detector_list[3].drawDetectRes();
+            detector_list[5].detect(cam2);
+            toolframe_dyr2 = detector_list[5].getCenter();
+            // detector_list[5].drawDetectRes();
+        }
+        else{
+            detector_list[0].detect(cam1);
+            toolcenter_dyr1 = detector_list[0].getCenter();
+            detector_list[1].detect(cam1);
+            tooltip_dyr1 = detector_list[1].getCenter();
+            detector_list[2].detect(cam1);
+            toolframe_dyr1 = detector_list[2].getCenter();
+
+            detector_list[0].detect(cam2);
+            toolcenter_dyr2 = detector_list[0].getCenter();
+            detector_list[1].detect(cam2);
+            tooltip_dyr2 = detector_list[1].getCenter();
+            detector_list[2].detect(cam2);
+            toolframe_dyr2 = detector_list[2].getCenter();
+        }
     }
 
     // go back to center
@@ -623,193 +779,240 @@ void visual_servo::GradientUpdater::updateGradient(Eigen::VectorXd& del_Pr, Eige
     flat2eigen(G_ori, result);
 }
 
-void visual_servo::GradientUpdater::mainLoop(visual_servo::ImageCapturer& cam1, visual_servo::ImageCapturer& cam2, std::vector<visual_servo::ToolDetector> & detector_list, bool sep){
+void visual_servo::GradientUpdater::mainLoop(visual_servo::ImageCapturer& cam1, visual_servo::ImageCapturer& cam2, std::vector<visual_servo::ToolDetector> & detector_list, bool dl_on, bool sep){
     ros::Rate rate(10.0);
+    // ros::AsyncSpinner spinner(4);
+    // spinner.start();
 
-    initialize(cam1, cam2, detector_list, true);
-
-    std_msgs::Float64MultiArray Gmsg;
-    cv::Point toolPos1, toolPos2;
-    cv::Point tooltipPos1, tooltipPos2;
-    cv::Point toolframePos1, toolframePos2;
-
-    cv::Point toolPos1_temp, toolPos2_temp;
-    cv::Point tooltipPos1_temp, tooltipPos2_temp;
-    cv::Point toolframePos1_temp, toolframePos2_temp;
-
-    double roll, pitch, yaw;
-
-    cv::Mat image1, image2;
-
-    ROS_INFO("Waiting for servo target ...");
-    while(!Tchecked && nh.ok()){
-        ros::spinOnce();
-        rate.sleep();
-    }
-    ROS_INFO("Servo target received!");
-
-    ROS_INFO("Gradient initialized! Ready for gradient update.");
-    // loopup current robot pose
     while (nh.ok()){
-        try{
-            image1 = cam1.getCurrentImage();
-            image2 = cam2.getCurrentImage();
+        initialize(cam1, cam2, detector_list, dl_on, sep);
+        stopSign = false;
 
-            listener.lookupTransform("/base_link", "/tool0",  ros::Time(0), transform);
-            break;
-            }
-        catch (tf::TransformException ex){
-            // ROS_ERROR("%s",ex.what());
-            // rate.sleep();
-            }   
-    }
+        std_msgs::Float64MultiArray Gmsg;
+        cv::Point2d toolPos1, toolPos2;
+        cv::Point2d tooltipPos1, tooltipPos2;
+        cv::Point2d toolframePos1, toolframePos2;
 
-    if (sep){
-        detector_list[0].firstDetect(cam1);
-        toolPos1 = detector_list[0].getCenter();
-        detector_list[1].firstDetect(cam2);
-        toolPos2 = detector_list[1].getCenter();
+        cv::Point2d toolPos1_temp, toolPos2_temp;
+        cv::Point2d tooltipPos1_temp, tooltipPos2_temp;
+        cv::Point2d toolframePos1_temp, toolframePos2_temp;
 
-        detector_list[2].firstDetect(cam1);
-        tooltipPos1 = detector_list[2].getCenter();
-        detector_list[3].firstDetect(cam2);
-        tooltipPos2 = detector_list[3].getCenter();
+        double roll, pitch, yaw;
 
-        detector_list[4].firstDetect(cam1);
-        toolframePos1 = detector_list[4].getCenter();
-        detector_list[5].firstDetect(cam2);
-        toolframePos2 = detector_list[5].getCenter();
-    }
-    else{
-        detector_list[0].detect(image1);
-        toolPos1 = detector_list[0].getCenter();
-        detector_list[0].detect(image2);
-        toolPos2 = detector_list[0].getCenter();
+        cv::Mat image1, image2;
 
-        detector_list[1].detect(image1);
-        tooltipPos1 = detector_list[1].getCenter();
-        detector_list[1].detect(image2);
-        tooltipPos2 = detector_list[1].getCenter();
+        ROS_INFO("Waiting for servo target ...");
+        while(!Tchecked && nh.ok()){
+            ros::spinOnce();
+            rate.sleep();
+        }
+        ROS_INFO("Servo target received!");
 
-        detector_list[2].detect(image1);
-        toolframePos1 = detector_list[2].getCenter();
-        detector_list[2].detect(image2);
-        toolframePos2 = detector_list[2].getCenter();
-    }
-
-    visual_servo::GradientUpdater::getToolRot(lastToolRot, toolPos1, tooltipPos1, toolframePos1, toolPos2, tooltipPos2, toolframePos2);
-    visual_servo::GradientUpdater::calculateEnergyFunction(lastToolRot-target_ori, lastEnergy);
-    tf::Matrix3x3(transform.getRotation()).getRPY(roll, pitch, yaw);
-    lastRobotRot << roll, pitch, yaw;
-
-    Eigen::VectorXd encAngDisplFromLast;
-    Eigen::VectorXd energyDiffFromLast;
-
-    while ((nh.ok())){
+        ROS_INFO("Gradient initialized! Ready for gradient update.");
+        // loopup current robot pose
         while (nh.ok()){
             try{
-                //*** TODO ***
-                // overload detect function to detect a given image, and only capture images in this loop
                 image1 = cam1.getCurrentImage();
                 image2 = cam2.getCurrentImage();
 
                 listener.lookupTransform("/base_link", "/tool0",  ros::Time(0), transform);
-
                 break;
                 }
             catch (tf::TransformException ex){
                 // ROS_ERROR("%s",ex.what());
+                // rate.sleep();
                 }   
         }
-        if (sep){
-            detector_list[0].detect(image1);
-            toolPos1_temp = detector_list[0].getCenter();
-            detector_list[1].detect(image2);
-            toolPos2_temp = detector_list[1].getCenter();
 
-            detector_list[2].detect(image1);
-            tooltipPos1_temp = detector_list[2].getCenter();
-            detector_list[3].detect(image2);
-            tooltipPos2_temp = detector_list[3].getCenter();
+        if (dl_on){
+            cv::Point2d targetPos1, targetPos2;
+            detector_list[0].dlDetect(image1, toolPos1, targetPos1);
+            detector_list[0].drawDetectRes(image1, toolPos1);
+            detector_list[0].dlDetect(image2, toolPos2, targetPos2);
+            detector_list[0].drawDetectRes(image2, toolPos2);
 
-            detector_list[4].detect(image1);
-            toolframePos1_temp = detector_list[4].getCenter();
-            detector_list[5].detect(image2);
-            toolframePos2_temp = detector_list[5].getCenter();
+            detector_list[1].firstDetect(cam1);
+            tooltipPos1 = detector_list[1].getCenter();
+            detector_list[2].firstDetect(cam2);
+            tooltipPos2 = detector_list[2].getCenter();
+
+            detector_list[3].firstDetect(cam1);
+            toolframePos1 = detector_list[3].getCenter();
+            detector_list[4].firstDetect(cam2);
+            toolframePos2 = detector_list[4].getCenter();
         }
         else{
-            detector_list[0].detect(image1);
-            toolPos1_temp = detector_list[0].getCenter();
-            detector_list[0].detect(image2);
-            toolPos2_temp = detector_list[0].getCenter();
+            if (sep){
+                detector_list[0].firstDetect(cam1);
+                toolPos1 = detector_list[0].getCenter();
+                detector_list[1].firstDetect(cam2);
+                toolPos2 = detector_list[1].getCenter();
 
-            detector_list[1].detect(image1);
-            tooltipPos1_temp = detector_list[1].getCenter();
-            detector_list[1].detect(image2);
-            tooltipPos2_temp = detector_list[1].getCenter();
+                detector_list[2].firstDetect(cam1);
+                tooltipPos1 = detector_list[2].getCenter();
+                detector_list[3].firstDetect(cam2);
+                tooltipPos2 = detector_list[3].getCenter();
 
-            detector_list[2].detect(image1);
-            toolframePos1_temp = detector_list[2].getCenter();
-            detector_list[2].detect(image2);
-            toolframePos2_temp = detector_list[2].getCenter();
+                detector_list[4].firstDetect(cam1);
+                toolframePos1 = detector_list[4].getCenter();
+                detector_list[5].firstDetect(cam2);
+                toolframePos2 = detector_list[5].getCenter();
+            }
+            else{
+                detector_list[0].detect(image1);
+                toolPos1 = detector_list[0].getCenter();
+                detector_list[0].detect(image2);
+                toolPos2 = detector_list[0].getCenter();
+
+                detector_list[1].detect(image1);
+                tooltipPos1 = detector_list[1].getCenter();
+                detector_list[1].detect(image2);
+                tooltipPos2 = detector_list[1].getCenter();
+
+                detector_list[2].detect(image1);
+                toolframePos1 = detector_list[2].getCenter();
+                detector_list[2].detect(image2);
+                toolframePos2 = detector_list[2].getCenter();
+            }
         }
 
-        if (cv::norm(cv::Mat(toolPos1_temp),cv::Mat(toolPos1))<=20.0){
-            toolPos1 = toolPos1_temp;
-        }
-
-        if (cv::norm(cv::Mat(toolPos2_temp),cv::Mat(toolPos2))<=20.0){
-            toolPos2 = toolPos2_temp;
-        }
-
-        if (cv::norm(cv::Mat(tooltipPos1_temp),cv::Mat(tooltipPos1))<=20.0){
-            tooltipPos1 = tooltipPos1_temp;
-        }
-
-        if (cv::norm(cv::Mat(tooltipPos2_temp),cv::Mat(tooltipPos2))<=20.0){
-            tooltipPos2 = tooltipPos2_temp;
-        }
-
-        if (cv::norm(cv::Mat(toolframePos1_temp),cv::Mat(toolframePos1))<=20.0){
-            toolframePos1 = toolframePos1_temp;
-        }
-
-        if (cv::norm(cv::Mat(toolframePos2_temp),cv::Mat(toolframePos2))<=20.0){
-            toolframePos2 = toolframePos2_temp;
-        }
-
-        visual_servo::GradientUpdater::getToolRot(toolRot, toolPos1, tooltipPos1, toolframePos1, toolPos2, tooltipPos2, toolframePos2);
-        visual_servo::GradientUpdater::calculateEnergyFunction(toolRot-target_ori, energy);
+        visual_servo::GradientUpdater::getToolRot(lastToolRot, toolPos1, tooltipPos1, toolframePos1, toolPos2, tooltipPos2, toolframePos2);
+        visual_servo::GradientUpdater::calculateEnergyFunction(lastToolRot-target_ori, lastEnergy);
         tf::Matrix3x3(transform.getRotation()).getRPY(roll, pitch, yaw);
-        robotRot << roll, pitch, yaw;
+        lastRobotRot << roll, pitch, yaw;
 
-        std::cout << "toolRotation: " << toolRot <<std::endl;
-        std::cout << "featureAngDisFromLast: " << toolRot-lastToolRot <<std::endl;
+        Eigen::VectorXd encAngDisplFromLast;
+        Eigen::VectorXd energyDiffFromLast;
 
-        encAngDisplFromLast = robotRot-lastRobotRot;
-        std::cout << "robotRotation: " << robotRot <<std::endl;
-        std::cout << "encDisFromLast: " << encAngDisplFromLast << std::endl;
+        while (nh.ok() && !stopSign){
+            while (nh.ok()){
+                try{
+                    //*** TODO ***
+                    // overload detect function to detect a given image, and only capture images in this loop
+                    image1 = cam1.getCurrentImage();
+                    image2 = cam2.getCurrentImage();
 
-        energyDiffFromLast = energy-lastEnergy;
-        std::cout << "energy: " << energy << std::endl;
-        std::cout << "energyDiffFromLast: " << energyDiffFromLast << std::endl;
+                    listener.lookupTransform("/base_link", "/tool0",  ros::Time(0), transform);
 
-        std::cout << "G_ori: " << G_ori << std::endl;
-        std::cout << "\n" << std::endl;
-        
+                    break;
+                    }
+                catch (tf::TransformException ex){
+                    // ROS_ERROR("%s",ex.what());
+                    }   
+            }
+            if (dl_on){
+                cv::Point2d targetPos1, targetPos2;
+                detector_list[0].dlDetect(cam1, toolPos1_temp, targetPos1);
+                // detector_list[0].drawDetectRes(cam1.getCurrentImage(),  toolPos1_temp);
+                detector_list[0].dlDetect(cam2, toolPos2_temp, targetPos2);
+                // detector_list[0].drawDetectRes(cam2.getCurrentImage(),  toolPos2_temp);
 
-        // update G_ori only if greater than a distance from the last update
-        if (encAngDisplFromLast.norm()>= update_enc_ang_step){
-            updateGradient(energyDiffFromLast, encAngDisplFromLast);
-            lastEnergy = energy;
-            lastToolRot = toolRot;
-            lastRobotRot = robotRot;
-        } 
+                detector_list[1].detect(cam1);
+                tooltipPos1_temp = detector_list[1].getCenter();
+                // detector_list[1].drawDetectRes(); 
+                detector_list[2].detect(cam2);
+                tooltipPos2_temp = detector_list[2].getCenter();
+                // detector_list[2].drawDetectRes();
+                
+                detector_list[3].detect(cam1);
+                toolframePos1_temp = detector_list[3].getCenter();
+                // detector_list[3].drawDetectRes(); 
+                detector_list[4].detect(cam2);
+                toolframePos2_temp = detector_list[4].getCenter();
+                // detector_list[4].drawDetectRes();
+            }
+            else{
+                if (sep){
+                    detector_list[0].detect(image1);
+                    toolPos1_temp = detector_list[0].getCenter();
+                    detector_list[1].detect(image2);
+                    toolPos2_temp = detector_list[1].getCenter();
 
-        Gmsg.data = G_ori_flat;
-        G_pub.publish(Gmsg);
-        ros::spinOnce();
-        rate.sleep();
+                    detector_list[2].detect(image1);
+                    tooltipPos1_temp = detector_list[2].getCenter();
+                    detector_list[3].detect(image2);
+                    tooltipPos2_temp = detector_list[3].getCenter();
+
+                    detector_list[4].detect(image1);
+                    toolframePos1_temp = detector_list[4].getCenter();
+                    detector_list[5].detect(image2);
+                    toolframePos2_temp = detector_list[5].getCenter();
+                }
+                else{
+                    detector_list[0].detect(image1);
+                    toolPos1_temp = detector_list[0].getCenter();
+                    detector_list[0].detect(image2);
+                    toolPos2_temp = detector_list[0].getCenter();
+
+                    detector_list[1].detect(image1);
+                    tooltipPos1_temp = detector_list[1].getCenter();
+                    detector_list[1].detect(image2);
+                    tooltipPos2_temp = detector_list[1].getCenter();
+
+                    detector_list[2].detect(image1);
+                    toolframePos1_temp = detector_list[2].getCenter();
+                    detector_list[2].detect(image2);
+                    toolframePos2_temp = detector_list[2].getCenter();
+                }
+            }
+
+            if (cv::norm(cv::Mat(toolPos1_temp),cv::Mat(toolPos1))<=20.0){
+                toolPos1 = toolPos1_temp;
+            }
+
+            if (cv::norm(cv::Mat(toolPos2_temp),cv::Mat(toolPos2))<=20.0){
+                toolPos2 = toolPos2_temp;
+            }
+
+            if (cv::norm(cv::Mat(tooltipPos1_temp),cv::Mat(tooltipPos1))<=20.0){
+                tooltipPos1 = tooltipPos1_temp;
+            }
+
+            if (cv::norm(cv::Mat(tooltipPos2_temp),cv::Mat(tooltipPos2))<=20.0){
+                tooltipPos2 = tooltipPos2_temp;
+            }
+
+            if (cv::norm(cv::Mat(toolframePos1_temp),cv::Mat(toolframePos1))<=20.0){
+                toolframePos1 = toolframePos1_temp;
+            }
+
+            if (cv::norm(cv::Mat(toolframePos2_temp),cv::Mat(toolframePos2))<=20.0){
+                toolframePos2 = toolframePos2_temp;
+            }
+
+            visual_servo::GradientUpdater::getToolRot(toolRot, toolPos1, tooltipPos1, toolframePos1, toolPos2, tooltipPos2, toolframePos2);
+            visual_servo::GradientUpdater::calculateEnergyFunction(toolRot-target_ori, energy);
+            tf::Matrix3x3(transform.getRotation()).getRPY(roll, pitch, yaw);
+            robotRot << roll, pitch, yaw;
+
+            std::cout << "toolRotation: " << toolRot <<std::endl;
+            std::cout << "featureAngDisFromLast: " << toolRot-lastToolRot <<std::endl;
+
+            encAngDisplFromLast = robotRot-lastRobotRot;
+            std::cout << "robotRotation: " << robotRot <<std::endl;
+            std::cout << "encDisFromLast: " << encAngDisplFromLast << std::endl;
+
+            energyDiffFromLast = energy-lastEnergy;
+            std::cout << "energy: " << energy << std::endl;
+            std::cout << "energyDiffFromLast: " << energyDiffFromLast << std::endl;
+
+            std::cout << "G_ori: " << G_ori << std::endl;
+            std::cout << "\n" << std::endl;
+            
+
+            // update G_ori only if greater than a distance from the last update
+            if (encAngDisplFromLast.norm()>= update_enc_ang_step){
+                updateGradient(energyDiffFromLast, encAngDisplFromLast);
+                lastEnergy = energy;
+                lastToolRot = toolRot;
+                lastRobotRot = robotRot;
+            } 
+
+            Gmsg.data = G_ori_flat;
+            G_pub.publish(Gmsg);
+            ros::spinOnce();
+            rate.sleep();
+        }
     }
 }
 
@@ -876,7 +1079,7 @@ void visual_servo::GradientUpdater::poseMsg2Transform(tf::Transform& transform, 
     transform.setRotation(tf::Quaternion(pose.orientation.x, pose.orientation.y, pose.orientation.z, pose.orientation.w));
 }
 
-void visual_servo::GradientUpdater::getToolRot(Eigen::VectorXd& toolRot, cv::Point& center1, cv::Point& tooltip1, cv::Point& frametip1, cv::Point& center2, cv::Point& tooltip2, cv::Point& frametip2){
+void visual_servo::GradientUpdater::getToolRot(Eigen::VectorXd& toolRot, cv::Point2d& center1, cv::Point2d& tooltip1, cv::Point2d& frametip1, cv::Point2d& center2, cv::Point2d& tooltip2, cv::Point2d& frametip2){
     double theta11 = atan2((tooltip1-center1).y, (tooltip1-center1).x); 
     double theta12 = atan2((frametip1-center1).y, (frametip1-center1).x); 
     double theta21 = atan2((tooltip2-center2).y, (tooltip2-center2).x); 

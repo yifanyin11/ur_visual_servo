@@ -12,8 +12,18 @@ nh(nh){
     upper_hsv = cv::Scalar(hsv_range[3], hsv_range[4], hsv_range[5]);
     if (dl_on){
         cli = nh.serviceClient<dl_service::dl_detection>("/visual_servo/dl_detection");
-        cli.waitForExistence();
     }
+}
+
+visual_servo::ToolDetector::ToolDetector(ros::NodeHandle& nh) :
+nh(nh){
+    tool_center.x = -1.0;
+    tool_center.y = -1.0;
+    corner1.x = -1.0;
+    corner1.y = -1.0;
+    corner2.x = -1.0;
+    corner2.y = -1.0;
+    cli = nh.serviceClient<dl_service::dl_detection>("/visual_servo/dl_detection");
 }
 
 cv::Mat visual_servo::ToolDetector::getSourceImage(visual_servo::ImageCapturer& cam){
@@ -23,8 +33,8 @@ cv::Mat visual_servo::ToolDetector::getSourceImage(visual_servo::ImageCapturer& 
     return cam.getCurrentImage();
 }
 
-cv::Point visual_servo::ToolDetector::getCenter(){
-    return tool_center;
+cv::Point2d visual_servo::ToolDetector::getCenter(){
+    return cv::Point2d((double)tool_center.x, (double)tool_center.y);
 }
 
 void visual_servo::ToolDetector::firstDetect(visual_servo::ImageCapturer& cam){
@@ -203,60 +213,6 @@ void visual_servo::ToolDetector::detect(cv::Mat& img){
     }
 }
 
-void visual_servo::ToolDetector::track(ImageCapturer& cam, double roir_width, double roir_height){
-    // update source image
-    image = cam.getCurrentImage();
-    // create a img with a fixed size | dim constraints
-    int h = image.rows, w = image.cols;
-    if (tool_center.x==-1 || tool_center.y==-1 || tool_center.x>=w || tool_center.y>=h){
-        while (tool_center.x==-1 || tool_center.y==-1 || tool_center.x>=image.cols || tool_center.y>=image.rows){
-            ROS_ERROR("TRYING TO CORRECT AFTER DETECTION FAILED ...");
-            image = cam.getCurrentImage();
-            visual_servo::ToolDetector::detect(image);
-        }
-    }
-    else{
-        int roi_w = w*roir_width, roi_h = h*roir_height;
-        cv::Point roi_origin(int(std::max(tool_center.x-roi_w/2,0)), int(std::max(tool_center.y-roi_h/2,0)));
-        cv::Mat roi = image(cv::Range(roi_origin.y, int(std::min(tool_center.y+roi_h/2,h))), 
-            cv::Range(roi_origin.x, int(std::min(tool_center.x+roi_w/2,w))));
-        // detect inside roi
-        visual_servo::ToolDetector::detect(roi);
-        tool_center.x+=roi_origin.x;
-        tool_center.y+=roi_origin.y;
-        corner1.x+=roi_origin.x;
-        corner1.y+=roi_origin.y;
-        corner2.x+=roi_origin.x;
-        corner2.y+=roi_origin.y;
-    }
-}
-
-void visual_servo::ToolDetector::track(cv::Mat& image, ImageCapturer& cam, double roir_width, double roir_height){
-    // create a img with a fixed size | dim constraints
-    int h = image.rows, w = image.cols;
-    if (tool_center.x==-1 || tool_center.y==-1 || tool_center.x>=w || tool_center.y>=h){
-        while (tool_center.x==-1 || tool_center.y==-1 || tool_center.x>=image.cols || tool_center.y>=image.rows){
-            ROS_ERROR("TRYING TO CORRECT AFTER DETECTION FAILED ...");
-            image = cam.getCurrentImage();
-            visual_servo::ToolDetector::detect(image);
-        }
-    }
-    else{
-        int roi_w = w*roir_width, roi_h = h*roir_height;
-        cv::Point roi_origin(int(std::max(tool_center.x-roi_w/2,0)), int(std::max(tool_center.y-roi_h/2,0)));
-        cv::Mat roi = image(cv::Range(roi_origin.y, int(std::min(tool_center.y+roi_h/2,h))), 
-            cv::Range(roi_origin.x, int(std::min(tool_center.x+roi_w/2,w))));
-        // detect inside roi
-        visual_servo::ToolDetector::detect(roi);
-        tool_center.x+=roi_origin.x;
-        tool_center.y+=roi_origin.y;
-        corner1.x+=roi_origin.x;
-        corner1.y+=roi_origin.y;
-        corner2.x+=roi_origin.x;
-        corner2.y+=roi_origin.y;
-    }
-}
-
 void visual_servo::ToolDetector::dlDetect(cv::Mat& img, cv::Point2d& drivertip, cv::Point2d& screwcup){
     image = img.clone();
     cv_bridge::CvImage img_bridge;
@@ -269,6 +225,8 @@ void visual_servo::ToolDetector::dlDetect(cv::Mat& img, cv::Point2d& drivertip, 
 
     dl_service::dl_detection srv;
     srv.request.image = img_msg;
+
+    cli.waitForExistence();
 
     if (!cli.call(srv)){
         ROS_ERROR("failed to call image capture in tool_detector");
@@ -300,6 +258,8 @@ void visual_servo::ToolDetector::dlDetect(ImageCapturer& cam, cv::Point2d& drive
 
     dl_service::dl_detection srv;
     srv.request.image = img_msg;
+
+    cli.waitForExistence();
 
     if (!cli.call(srv)){
         ROS_ERROR("failed to call image capture in tool_detector");

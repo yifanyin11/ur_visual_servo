@@ -53,9 +53,9 @@ int main(int argc, char** argv){
     int num_features = 4;
     int dof = 6;
 
-    cv::Point target1, target2;
-    cv::Point target_tooltipPos1, target_tooltipPos2;
-    cv::Point target_toolframePos1, target_toolframePos2;
+    cv::Point2d target1, target2;
+    cv::Point2d target_tooltipPos1, target_tooltipPos2;
+    cv::Point2d target_toolframePos1, target_toolframePos2;
 
     Eigen::VectorXd targets, target_pos, target_ori;
 

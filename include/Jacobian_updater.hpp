@@ -74,8 +74,13 @@ namespace visual_servo{
         std::vector<double> J_flat;
         std::vector<double> J_ori_flat;
 
+        bool stopSign;
+
         // publishers
         ros::Publisher J_pub;
+
+        // subscribers
+        ros::Subscriber stop_sub;
         
         // for test
         int count;
@@ -85,17 +90,19 @@ namespace visual_servo{
         JacobianUpdater(ros::NodeHandle& nh, std::string& toolPos_topic);
         // destructor
         ~JacobianUpdater(){};
+        // callbacks
+        void stopCallback(const std_msgs::Bool::ConstPtr& msg);
         // static functions for optimization
         static void evalCostFunction(const double *params, int num_inputs, const void *inputs, double *fvec, int *info);
         static bool runLM(const OptimData& optim_data, const std::vector<double>& initial_state, std::vector<double>& result);
         // initialization function
-        void initializeJacobian(ImageCapturer& cam1, ImageCapturer& cam2, ToolDetector& detector);
+        void initializeJacobian(ImageCapturer& cam1, ImageCapturer& cam2, ToolDetector& detector, bool dl_on=false);
         void initializeJacobian(ImageCapturer& cam1, ImageCapturer& cam2, std::vector<ToolDetector>& detector_list);
         void initializeJacobianOri(ImageCapturer& cam1, ImageCapturer& cam2, std::vector<ToolDetector>& detector_list);
         // update funcion
         void updateJacobian(Eigen::VectorXd& del_Px, Eigen::VectorXd& del_x, bool if_ori);
         // main loop
-        void mainLoopPos(ImageCapturer& cam1, ImageCapturer& cam2, ToolDetector& detector);
+        void mainLoopPos(ImageCapturer& cam1, ImageCapturer& cam2, ToolDetector& detector, bool dl_on=false);
         void mainLoopPos(ImageCapturer& cam1, ImageCapturer& cam2, std::vector<ToolDetector>& detector_list);
         void mainLoop(ImageCapturer& cam1, ImageCapturer& cam2, std::vector<ToolDetector>& detector_list);
         // utils
@@ -103,7 +110,7 @@ namespace visual_servo{
         static void flat2eigen(Eigen::MatrixXd& M, std::vector<double> flat);
         static void transform2PoseMsg(tf::Transform& transform, geometry_msgs::Pose& pose);
         static void poseMsg2Transform(tf::Transform& transform, geometry_msgs::Pose& pose);
-        static void getToolRot(Eigen::VectorXd& toolRot, cv::Point& center1, cv::Point& tooltip1, cv::Point& frametip1, cv::Point& center2, cv::Point& tooltip2, cv::Point& frametip2);
+        static void getToolRot(Eigen::VectorXd& toolRot, cv::Point2d& center1, cv::Point2d& tooltip1, cv::Point2d& frametip1, cv::Point2d& center2, cv::Point2d& tooltip2, cv::Point2d& frametip2);
         static void limitAngDisp(Eigen::VectorXd& angDisp);
     };
 

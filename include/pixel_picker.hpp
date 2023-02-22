@@ -20,8 +20,8 @@ private:
     cv::Point point;
 
 public:
-    PixelPicker(double shrink_height_, int dot_radius_);
-    cv::Point pickOne(cv::Mat img);
+    PixelPicker(double shrink_height_=0.75, int dot_radius_=5);
+    cv::Point2d pickOne(cv::Mat img);
     // mutators
     void set_shrink_height(double shrink_height_);
     void set_dot_radius(int dot_radius_);

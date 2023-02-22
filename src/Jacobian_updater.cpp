@@ -17,6 +17,8 @@ nh(nh){
     initStep = 0.03;
     initStepOri = M_PI/12;
 
+    stopSign = false;
+
     toolPos.resize(num_features);
     lastToolPos.resize(num_features);
     robotPos.resize(dof_robot);
@@ -32,11 +34,20 @@ nh(nh){
     J_flat.resize(dof_robot*num_features);
     J_ori_flat.resize(dof_robot*num_features);
 
+    // configure subscribers
+    stop_sub = nh.subscribe("/visual_servo/Jacobian_update_stop", 1, &visual_servo::JacobianUpdater::stopCallback, this);
+
     // for test
     count = 0;
 
     // publishers
     J_pub = nh.advertise<std_msgs::Float64MultiArray>(J_topic, 1);
+}
+
+void visual_servo::JacobianUpdater::stopCallback(const std_msgs::Bool::ConstPtr& msg){
+    if (msg->data){
+        stopSign = true;
+    }
 }
 
 void visual_servo::JacobianUpdater::evalCostFunction(const double *params, int num_inputs, const void *inputs, double *fvec, int *info)
@@ -147,7 +158,7 @@ bool visual_servo::JacobianUpdater::runLM(const OptimData& optim_data, const std
     return true;
 }
 
-void visual_servo::JacobianUpdater::initializeJacobian(visual_servo::ImageCapturer& cam1, visual_servo::ImageCapturer& cam2, visual_servo::ToolDetector& detector){
+void visual_servo::JacobianUpdater::initializeJacobian(visual_servo::ImageCapturer& cam1, visual_servo::ImageCapturer& cam2, visual_servo::ToolDetector& detector, bool dl_on){
     // Ros setups
     ros::AsyncSpinner spinner(4);
     spinner.start();
@@ -165,8 +176,8 @@ void visual_servo::JacobianUpdater::initializeJacobian(visual_servo::ImageCaptur
     bool success;
 
     // define points
-    cv::Point tool_dxl1, tool_dyl1, tool_dzl1, tool_dxr1, tool_dyr1, tool_dzr1;
-    cv::Point tool_dxl2, tool_dyl2, tool_dzl2, tool_dxr2, tool_dyr2, tool_dzr2;
+    cv::Point2d tool_dxl1, tool_dyl1, tool_dzl1, tool_dxr1, tool_dyr1, tool_dzr1;
+    cv::Point2d tool_dxl2, tool_dyl2, tool_dzl2, tool_dxr2, tool_dyr2, tool_dzr2;
     // get current pose
     geometry_msgs::PoseStamped current_pose;
     current_pose = move_group_interface_arm.getCurrentPose("tool0");
@@ -179,13 +190,6 @@ void visual_servo::JacobianUpdater::initializeJacobian(visual_servo::ImageCaptur
     target_pose.position.x = current_pose.pose.position.x-initStep;
     move_group_interface_arm.setPoseTarget(target_pose);
 
-    // // ************* track ******************
-    // // first detection
-    // detector.firstDetect(cam1);
-    // detector.drawDetectRes();
-    // detector.firstDetect(cam2);
-    // detector.drawDetectRes();
-
     success = (move_group_interface_arm.plan(my_plan_arm) == moveit::planning_interface::MoveItErrorCode::SUCCESS);
     ROS_INFO_NAMED("update_image_J", "Visualizing plan (pose goal) %s", success ? "" : "FAILED");
     move_group_interface_arm.move();
@@ -193,12 +197,21 @@ void visual_servo::JacobianUpdater::initializeJacobian(visual_servo::ImageCaptur
     ros::Duration(1.0).sleep();
 
     // detect tool image position at x-
-    detector.detect(cam1);
-    tool_dxl1 = detector.getCenter();
-    detector.drawDetectRes();
-    detector.detect(cam2);
-    tool_dxl2 = detector.getCenter();
-    detector.drawDetectRes();
+    if (dl_on){
+        cv::Point2d targetPos1, targetPos2;
+        detector.dlDetect(cam1, tool_dxl1, targetPos1);
+        detector.drawDetectRes(cam1.getCurrentImage(), tool_dxl1);
+        detector.dlDetect(cam2, tool_dxl2, targetPos2);
+        detector.drawDetectRes(cam2.getCurrentImage(), tool_dxl2);
+    }
+    else{
+        detector.detect(cam1);
+        tool_dxl1 = detector.getCenter();
+        detector.drawDetectRes();
+        detector.detect(cam2);
+        tool_dxl2 = detector.getCenter();
+        detector.drawDetectRes();
+    }
 
     // move to x+
     target_pose.position.x = target_pose.position.x+2*initStep;
@@ -211,12 +224,21 @@ void visual_servo::JacobianUpdater::initializeJacobian(visual_servo::ImageCaptur
     ros::Duration(1.0).sleep();
 
     // detect tool image position at x+
-    detector.detect(cam1);
-    tool_dxr1 = detector.getCenter();
-    detector.drawDetectRes();
-    detector.detect(cam2);
-    tool_dxr2 = detector.getCenter();
-    detector.drawDetectRes();
+    if (dl_on){
+        cv::Point2d targetPos1, targetPos2;
+        detector.dlDetect(cam1, tool_dxr1, targetPos1);
+        detector.drawDetectRes(cam1.getCurrentImage(), tool_dxr1);
+        detector.dlDetect(cam2, tool_dxr2, targetPos2);
+        detector.drawDetectRes(cam2.getCurrentImage(), tool_dxr2);
+    }
+    else{
+        detector.detect(cam1);
+        tool_dxr1 = detector.getCenter();
+        detector.drawDetectRes();
+        detector.detect(cam2);
+        tool_dxr2 = detector.getCenter();
+        detector.drawDetectRes();
+    }
     
     // move to y-
     target_pose.position.x = target_pose.position.x-initStep;
@@ -230,12 +252,21 @@ void visual_servo::JacobianUpdater::initializeJacobian(visual_servo::ImageCaptur
     ros::Duration(1.0).sleep();
 
     // detect tool image position at y-
-    detector.detect(cam1);
-    tool_dyl1 = detector.getCenter();
-    detector.drawDetectRes();
-    detector.detect(cam2);
-    tool_dyl2 = detector.getCenter();
-    detector.drawDetectRes();
+    if (dl_on){
+        cv::Point2d targetPos1, targetPos2;
+        detector.dlDetect(cam1, tool_dyl1, targetPos1);
+        detector.drawDetectRes(cam1.getCurrentImage(), tool_dyl1);
+        detector.dlDetect(cam2, tool_dyl2, targetPos2);
+        detector.drawDetectRes(cam2.getCurrentImage(), tool_dyl2);
+    }
+    else{
+        detector.detect(cam1);
+        tool_dyl1 = detector.getCenter();
+        detector.drawDetectRes();
+        detector.detect(cam2);
+        tool_dyl2 = detector.getCenter();
+        detector.drawDetectRes();
+    }
 
     // move to y+
     target_pose.position.y = target_pose.position.y+2*initStep;
@@ -248,12 +279,21 @@ void visual_servo::JacobianUpdater::initializeJacobian(visual_servo::ImageCaptur
     ros::Duration(1.0).sleep();
 
     // detect tool image position at x+
-    detector.detect(cam1);
-    tool_dyr1 = detector.getCenter();
-    detector.drawDetectRes();
-    detector.detect(cam2);
-    tool_dyr2 = detector.getCenter();
-    detector.drawDetectRes();
+    if (dl_on){
+        cv::Point2d targetPos1, targetPos2;
+        detector.dlDetect(cam1, tool_dyr1, targetPos1);
+        detector.drawDetectRes(cam1.getCurrentImage(), tool_dyr1);
+        detector.dlDetect(cam2, tool_dyr2, targetPos2);
+        detector.drawDetectRes(cam2.getCurrentImage(), tool_dyr2);
+    }
+    else{
+        detector.detect(cam1);
+        tool_dyr1 = detector.getCenter();
+        detector.drawDetectRes();
+        detector.detect(cam2);
+        tool_dyr2 = detector.getCenter();
+        detector.drawDetectRes();
+    }
 
     // move to z-
     target_pose.position.y = target_pose.position.y-initStep;
@@ -267,12 +307,21 @@ void visual_servo::JacobianUpdater::initializeJacobian(visual_servo::ImageCaptur
     ros::Duration(1.0).sleep();
 
     // detect tool image position at z-
-    detector.detect(cam1);
-    tool_dzl1 = detector.getCenter();
-    detector.drawDetectRes();
-    detector.detect(cam2);
-    tool_dzl2 = detector.getCenter();
-    detector.drawDetectRes();
+    if (dl_on){
+        cv::Point2d targetPos1, targetPos2;
+        detector.dlDetect(cam1, tool_dzl1, targetPos1);
+        detector.drawDetectRes(cam1.getCurrentImage(), tool_dzl1);
+        detector.dlDetect(cam2, tool_dzl2, targetPos2);
+        detector.drawDetectRes(cam2.getCurrentImage(), tool_dzl2);
+    }
+    else{
+        detector.detect(cam1);
+        tool_dzl1 = detector.getCenter();
+        detector.drawDetectRes();
+        detector.detect(cam2);
+        tool_dzl2 = detector.getCenter();
+        detector.drawDetectRes();
+    }
 
     // move to z+
     target_pose.position.z = target_pose.position.z+2*initStep;
@@ -285,12 +334,21 @@ void visual_servo::JacobianUpdater::initializeJacobian(visual_servo::ImageCaptur
     ros::Duration(1.0).sleep();
 
     // detect tool image position at z+
-    detector.detect(cam1);
-    tool_dzr1 = detector.getCenter();
-    detector.drawDetectRes();
-    detector.detect(cam2);
-    tool_dzr2 = detector.getCenter();
-    detector.drawDetectRes();
+    if (dl_on){
+        cv::Point2d targetPos1, targetPos2;
+        detector.dlDetect(cam1, tool_dzr1, targetPos1);
+        detector.drawDetectRes(cam1.getCurrentImage(), tool_dzr1);
+        detector.dlDetect(cam2, tool_dzr2, targetPos2);
+        detector.drawDetectRes(cam2.getCurrentImage(), tool_dzr2);
+    }
+    else{
+        detector.detect(cam1);
+        tool_dzr1 = detector.getCenter();
+        detector.drawDetectRes();
+        detector.detect(cam2);
+        tool_dzr2 = detector.getCenter();
+        detector.drawDetectRes();
+    }
 
     // go back to center
     target_pose.position.z = target_pose.position.z-initStep;
@@ -352,8 +410,8 @@ void visual_servo::JacobianUpdater::initializeJacobian(visual_servo::ImageCaptur
     bool success;
 
     // define points
-    cv::Point tool_dxl1, tool_dyl1, tool_dzl1, tool_dxr1, tool_dyr1, tool_dzr1;
-    cv::Point tool_dxl2, tool_dyl2, tool_dzl2, tool_dxr2, tool_dyr2, tool_dzr2;
+    cv::Point2d tool_dxl1, tool_dyl1, tool_dzl1, tool_dxr1, tool_dyr1, tool_dzr1;
+    cv::Point2d tool_dxl2, tool_dyl2, tool_dzl2, tool_dxr2, tool_dyr2, tool_dzr2;
     // get current pose
     geometry_msgs::PoseStamped current_pose;
     current_pose = move_group_interface_arm.getCurrentPose("tool0");
@@ -539,13 +597,13 @@ void visual_servo::JacobianUpdater::initializeJacobianOri(visual_servo::ImageCap
     bool success;
 
     // define points
-    cv::Point tool_center1, tool_center2; 
+    cv::Point2d tool_center1, tool_center2; 
 
-    cv::Point tooltip_drl1, tooltip_drr1, tooltip_dpl1, tooltip_dpr1, tooltip_dyl1, tooltip_dyr1; // tooltip for cam1
-    cv::Point toolframe_drl1, toolframe_drr1, toolframe_dpl1, toolframe_dpr1, toolframe_dyl1, toolframe_dyr1; // tool frame tip for cam1
+    cv::Point2d tooltip_drl1, tooltip_drr1, tooltip_dpl1, tooltip_dpr1, tooltip_dyl1, tooltip_dyr1; // tooltip for cam1
+    cv::Point2d toolframe_drl1, toolframe_drr1, toolframe_dpl1, toolframe_dpr1, toolframe_dyl1, toolframe_dyr1; // tool frame tip for cam1
 
-    cv::Point tooltip_drl2, tooltip_drr2, tooltip_dpl2, tooltip_dpr2, tooltip_dyl2, tooltip_dyr2; // tooltip for cam2
-    cv::Point toolframe_drl2, toolframe_drr2, toolframe_dpl2, toolframe_dpr2, toolframe_dyl2, toolframe_dyr2; // tool frame tip for cam2
+    cv::Point2d tooltip_drl2, tooltip_drr2, tooltip_dpl2, tooltip_dpr2, tooltip_dyl2, tooltip_dyr2; // tooltip for cam2
+    cv::Point2d toolframe_drl2, toolframe_drr2, toolframe_dpl2, toolframe_dpr2, toolframe_dyl2, toolframe_dyr2; // tool frame tip for cam2
     
     // get current pose
     geometry_msgs::PoseStamped current_pose;
@@ -744,19 +802,19 @@ void visual_servo::JacobianUpdater::initializeJacobianOri(visual_servo::ImageCap
     // define delta thetas
     double del_theta_r1, del_theta_p1, del_theta_y1, del_theta_r2, del_theta_p2, del_theta_y2;
 
-    cv::Point del_tooltip_r_r1 = (tooltip_drl1-tool_center1)-(tooltip_drr1-tool_center1); 
-    cv::Point del_tooltip_r_p1 = (tooltip_dpl1-tool_center1)-(tooltip_dpr1-tool_center1); 
-    cv::Point del_tooltip_r_y1 = (tooltip_dyl1-tool_center1)-(tooltip_dyr1-tool_center1); 
-    cv::Point del_tooltip_r_r2 = (tooltip_drl2-tool_center2)-(tooltip_drr2-tool_center2); 
-    cv::Point del_tooltip_r_p2 = (tooltip_dpl2-tool_center2)-(tooltip_dpr2-tool_center2); 
-    cv::Point del_tooltip_r_y2 = (tooltip_dyl2-tool_center2)-(tooltip_dyr2-tool_center2); 
+    cv::Point2d del_tooltip_r_r1 = (tooltip_drl1-tool_center1)-(tooltip_drr1-tool_center1); 
+    cv::Point2d del_tooltip_r_p1 = (tooltip_dpl1-tool_center1)-(tooltip_dpr1-tool_center1); 
+    cv::Point2d del_tooltip_r_y1 = (tooltip_dyl1-tool_center1)-(tooltip_dyr1-tool_center1); 
+    cv::Point2d del_tooltip_r_r2 = (tooltip_drl2-tool_center2)-(tooltip_drr2-tool_center2); 
+    cv::Point2d del_tooltip_r_p2 = (tooltip_dpl2-tool_center2)-(tooltip_dpr2-tool_center2); 
+    cv::Point2d del_tooltip_r_y2 = (tooltip_dyl2-tool_center2)-(tooltip_dyr2-tool_center2); 
 
-    cv::Point del_toolframe_r_r1 = (toolframe_drl1-tool_center1)-(toolframe_drr1-tool_center1); 
-    cv::Point del_toolframe_r_p1 = (toolframe_dpl1-tool_center1)-(toolframe_dpr1-tool_center1); 
-    cv::Point del_toolframe_r_y1 = (toolframe_dyl1-tool_center1)-(toolframe_dyr1-tool_center1); 
-    cv::Point del_toolframe_r_r2 = (toolframe_drl2-tool_center2)-(toolframe_drr2-tool_center2); 
-    cv::Point del_toolframe_r_p2 = (toolframe_dpl2-tool_center2)-(toolframe_dpr2-tool_center2); 
-    cv::Point del_toolframe_r_y2 = (toolframe_dyl2-tool_center2)-(toolframe_dyr2-tool_center2); 
+    cv::Point2d del_toolframe_r_r1 = (toolframe_drl1-tool_center1)-(toolframe_drr1-tool_center1); 
+    cv::Point2d del_toolframe_r_p1 = (toolframe_dpl1-tool_center1)-(toolframe_dpr1-tool_center1); 
+    cv::Point2d del_toolframe_r_y1 = (toolframe_dyl1-tool_center1)-(toolframe_dyr1-tool_center1); 
+    cv::Point2d del_toolframe_r_r2 = (toolframe_drl2-tool_center2)-(toolframe_drr2-tool_center2); 
+    cv::Point2d del_toolframe_r_p2 = (toolframe_dpl2-tool_center2)-(toolframe_dpr2-tool_center2); 
+    cv::Point2d del_toolframe_r_y2 = (toolframe_dyl2-tool_center2)-(toolframe_dyr2-tool_center2); 
 
     double del_tooltip_theta_r1 = atan2(del_tooltip_r_r1.y, del_tooltip_r_r1.x); 
     double del_tooltip_theta_p1 = atan2(del_tooltip_r_p1.y, del_tooltip_r_p1.x); 
@@ -824,293 +882,281 @@ void visual_servo::JacobianUpdater::updateJacobian(Eigen::VectorXd& del_Pr, Eige
     }
 }
 
-void visual_servo::JacobianUpdater::mainLoopPos(visual_servo::ImageCapturer& cam1, visual_servo::ImageCapturer& cam2, visual_servo::ToolDetector& detector){
+void visual_servo::JacobianUpdater::mainLoopPos(visual_servo::ImageCapturer& cam1, visual_servo::ImageCapturer& cam2, visual_servo::ToolDetector& detector, bool dl_on){
     ros::Rate rate(10.0);
 
-    initializeJacobian(cam1, cam2, detector);
-
-    std_msgs::Float64MultiArray Jmsg;
-    cv::Point toolPos1, toolPos2;
-    cv::Point toolPos1_temp, toolPos2_temp;
-
-    double roll, pitch, yaw;
-
-    cv::Mat image1, image2;
-
-    ROS_INFO("Jacobian initialized! Ready for Jacobian update.");
-    // loopup current robot pose
     while (nh.ok()){
-        try{
-            image1 = cam1.getCurrentImage();
-            image2 = cam2.getCurrentImage();
-            // cam1.saveCurrentImage("./along_cam", std::to_string(count)+".png");
-            // cam2.saveCurrentImage("./along_usbcam", std::to_string(count)+".png");
-            // count++;
 
-            listener.lookupTransform("/base_link", "/tool0",  ros::Time(0), transform);
-            break;
-            }
-        catch (tf::TransformException ex){
-            // ROS_ERROR("%s",ex.what());
-            // rate.sleep();
-            }   
-    }
+        initializeJacobian(cam1, cam2, detector, dl_on);
 
-    detector.firstDetect(cam1);
-    toolPos1 = detector.getCenter();
-    detector.firstDetect(cam2);
-    toolPos2 = detector.getCenter();
+        stopSign = false;
 
-    lastToolPos << toolPos1.x, toolPos1.y, toolPos2.x, toolPos2.y;
-    lastRobotPos << transform.getOrigin().x(), transform.getOrigin().y(), transform.getOrigin().z();
+        std_msgs::Float64MultiArray Jmsg;
 
-    Eigen::VectorXd encDisplFromLast;
-    Eigen::VectorXd pixDisplFromLast;
+        cv::Point2d toolPos1, toolPos2;
+        cv::Point2d toolPos1_temp, toolPos2_temp;
 
-    while ((nh.ok())){
+        double roll, pitch, yaw;
+
+        cv::Mat image1, image2;
+
+        ROS_INFO("Jacobian initialized! Ready for Jacobian update.");
+        // loopup current robot pose
         while (nh.ok()){
             try{
-                //*** TODO ***
-                // overload detect function to detect a given image, and only capture images in this loop
-                // image1 = cam1.getCurrentImage();
-                // image2 = cam2.getCurrentImage();
+                image1 = cam1.getCurrentImage();
+                image2 = cam2.getCurrentImage();
                 // cam1.saveCurrentImage("./along_cam", std::to_string(count)+".png");
                 // cam2.saveCurrentImage("./along_usbcam", std::to_string(count)+".png");
-                count++;
+                // count++;
 
                 listener.lookupTransform("/base_link", "/tool0",  ros::Time(0), transform);
-
                 break;
                 }
             catch (tf::TransformException ex){
                 // ROS_ERROR("%s",ex.what());
+                // rate.sleep();
                 }   
         }
-        
-        detector.detect(image1);
-        toolPos1_temp = detector.getCenter();
-        detector.detect(image2);
-        toolPos2_temp = detector.getCenter();
 
-        if (cv::norm(cv::Mat(toolPos1_temp),cv::Mat(toolPos1))<=20.0){
-            toolPos1 = toolPos1_temp;
+        if (dl_on){
+            cv::Point2d targetPos1, targetPos2;
+            detector.dlDetect(image1, toolPos1, targetPos1);
+            detector.drawDetectRes(image1, toolPos1);
+            detector.dlDetect(image2, toolPos2, targetPos2);
+            detector.drawDetectRes(image2, toolPos2);
+        }
+        else{
+            detector.firstDetect(cam1);
+            toolPos1 = detector.getCenter();
+            detector.firstDetect(cam2);
+            toolPos2 = detector.getCenter();
         }
 
-        if (cv::norm(cv::Mat(toolPos2_temp),cv::Mat(toolPos2))<=20.0){
-            toolPos2 = toolPos2_temp;
+        lastToolPos << toolPos1.x, toolPos1.y, toolPos2.x, toolPos2.y;
+        lastRobotPos << transform.getOrigin().x(), transform.getOrigin().y(), transform.getOrigin().z();
+
+        Eigen::VectorXd encDisplFromLast;
+        Eigen::VectorXd pixDisplFromLast;
+
+        while (nh.ok() && !stopSign){
+            while (nh.ok()){
+                try{
+                    //*** TODO ***
+                    // overload detect function to detect a given image, and only capture images in this loop
+                    // image1 = cam1.getCurrentImage();
+                    // image2 = cam2.getCurrentImage();
+                    // cam1.saveCurrentImage("./along_cam", std::to_string(count)+".png");
+                    // cam2.saveCurrentImage("./along_usbcam", std::to_string(count)+".png");
+                    count++;
+
+                    listener.lookupTransform("/base_link", "/tool0",  ros::Time(0), transform);
+
+                    break;
+                    }
+                catch (tf::TransformException ex){
+                    // ROS_ERROR("%s",ex.what());
+                    }   
+            }
+            if (dl_on){
+                cv::Point2d targetPos1, targetPos2;
+                detector.dlDetect(image1, toolPos1_temp, targetPos1);
+                // detector.drawDetectRes(image1, toolPos1_temp);
+                detector.dlDetect(image2, toolPos2_temp, targetPos2);
+                // detector.drawDetectRes(image2, toolPos2_temp);
+            }
+            else{
+                detector.detect(image1);
+                toolPos1_temp = detector.getCenter();
+                detector.detect(image2);
+                toolPos2_temp = detector.getCenter();
+            }
+
+            if (cv::norm(cv::Mat(toolPos1_temp),cv::Mat(toolPos1))<=20.0){
+                toolPos1 = toolPos1_temp;
+            }
+
+            if (cv::norm(cv::Mat(toolPos2_temp),cv::Mat(toolPos2))<=20.0){
+                toolPos2 = toolPos2_temp;
+            }
+
+
+            toolPos << toolPos1.x, toolPos1.y, toolPos2.x, toolPos2.y;
+            robotPos << transform.getOrigin().x(), transform.getOrigin().y(), transform.getOrigin().z();
+
+            encDisplFromLast = robotPos-lastRobotPos;
+            std::cout << "robotPosition: " << robotPos <<std::endl;
+            std::cout << "encDisFromLast: " << encDisplFromLast << std::endl;
+
+            pixDisplFromLast = toolPos-lastToolPos;
+            std::cout << "toolPosition: " << toolPos << std::endl;
+            std::cout << "pixelDisFromLast: " << pixDisplFromLast << std::endl;
+
+            std::cout << "J: " << J << std::endl;
+            
+            // update J only if greater than a distance from the last update
+            if (pixDisplFromLast.norm()>= update_pix_step || encDisplFromLast.norm()>= update_enc_step){
+                updateJacobian(pixDisplFromLast, encDisplFromLast);
+                lastToolPos = toolPos;
+                lastRobotPos = robotPos;
+            } 
+
+            std::vector<double> J_full = J_flat;
+
+            Jmsg.data = J_flat;
+            J_pub.publish(Jmsg);
+            ros::spinOnce();
+            rate.sleep();
         }
-
-
-        toolPos << toolPos1.x, toolPos1.y, toolPos2.x, toolPos2.y;
-        robotPos << transform.getOrigin().x(), transform.getOrigin().y(), transform.getOrigin().z();
-
-        encDisplFromLast = robotPos-lastRobotPos;
-        std::cout << "robotPosition: " << robotPos <<std::endl;
-        std::cout << "encDisFromLast: " << encDisplFromLast << std::endl;
-
-        pixDisplFromLast = toolPos-lastToolPos;
-        std::cout << "toolPosition: " << toolPos << std::endl;
-        std::cout << "pixelDisFromLast: " << pixDisplFromLast << std::endl;
-
-        std::cout << "J: " << J << std::endl;
-        
-        // update J only if greater than a distance from the last update
-        if (pixDisplFromLast.norm()>= update_pix_step || encDisplFromLast.norm()>= update_enc_step){
-            updateJacobian(pixDisplFromLast, encDisplFromLast);
-            lastToolPos = toolPos;
-            lastRobotPos = robotPos;
-        } 
-
-        std::vector<double> J_full = J_flat;
-
-        Jmsg.data = J_flat;
-        J_pub.publish(Jmsg);
-        ros::spinOnce();
-        rate.sleep();
     }
 }
 
 void visual_servo::JacobianUpdater::mainLoopPos(visual_servo::ImageCapturer& cam1, visual_servo::ImageCapturer& cam2, std::vector<visual_servo::ToolDetector> & detector_list){
     ros::Rate rate(10.0);
 
-    initializeJacobian(cam1, cam2, detector_list);
-
-    std_msgs::Float64MultiArray Jmsg;
-    cv::Point toolPos1, toolPos2;
-    cv::Point toolPos1_temp, toolPos2_temp;
-
-    double roll, pitch, yaw;
-
-    cv::Mat image1, image2;
-
-    ROS_INFO("Jacobian initialized! Ready for Jacobian update.");
-    // loopup current robot pose
     while (nh.ok()){
-        try{
-            // image1 = cam1.getCurrentImage();
-            // image2 = cam2.getCurrentImage();
-            // cam1.saveCurrentImage("./along_cam", std::to_string(count)+".png");
-            // cam2.saveCurrentImage("./along_usbcam", std::to_string(count)+".png");
-            // count++;
 
-            listener.lookupTransform("/base_link", "/tool0",  ros::Time(0), transform);
-            break;
-            }
-        catch (tf::TransformException ex){
-            // ROS_ERROR("%s",ex.what());
-            // rate.sleep();
-            }   
-    }
+        initializeJacobian(cam1, cam2, detector_list);
 
-    detector_list[0].firstDetect(cam1);
-    toolPos1 = detector_list[0].getCenter();
-    detector_list[1].firstDetect(cam2);
-    toolPos2 = detector_list[1].getCenter();
+        stopSign = false;
 
-    lastToolPos << toolPos1.x, toolPos1.y, toolPos2.x, toolPos2.y;
-    lastRobotPos << transform.getOrigin().x(), transform.getOrigin().y(), transform.getOrigin().z();
+        std_msgs::Float64MultiArray Jmsg;
+        cv::Point2d toolPos1, toolPos2;
+        cv::Point2d toolPos1_temp, toolPos2_temp;
 
-    Eigen::VectorXd encDisplFromLast;
-    Eigen::VectorXd pixDisplFromLast;
+        double roll, pitch, yaw;
 
-    while ((nh.ok())){
+        cv::Mat image1, image2;
+
+        ROS_INFO("Jacobian initialized! Ready for Jacobian update.");
+        // loopup current robot pose
         while (nh.ok()){
             try{
-                //*** TODO ***
-                // overload detect function to detect a given image, and only capture images in this loop
-                image1 = cam1.getCurrentImage();
-                image2 = cam2.getCurrentImage();
+                // image1 = cam1.getCurrentImage();
+                // image2 = cam2.getCurrentImage();
                 // cam1.saveCurrentImage("./along_cam", std::to_string(count)+".png");
                 // cam2.saveCurrentImage("./along_usbcam", std::to_string(count)+".png");
-                count++;
+                // count++;
 
                 listener.lookupTransform("/base_link", "/tool0",  ros::Time(0), transform);
-
                 break;
                 }
             catch (tf::TransformException ex){
                 // ROS_ERROR("%s",ex.what());
+                // rate.sleep();
                 }   
         }
-        
-        detector_list[0].detect(image1);
-        toolPos1_temp = detector_list[0].getCenter();
-        detector_list[1].detect(image2);
-        toolPos2_temp = detector_list[1].getCenter();
 
-        if (cv::norm(cv::Mat(toolPos1_temp),cv::Mat(toolPos1))<=20.0){
-            toolPos1 = toolPos1_temp;
+        detector_list[0].firstDetect(cam1);
+        toolPos1 = detector_list[0].getCenter();
+        detector_list[1].firstDetect(cam2);
+        toolPos2 = detector_list[1].getCenter();
+
+        lastToolPos << toolPos1.x, toolPos1.y, toolPos2.x, toolPos2.y;
+        lastRobotPos << transform.getOrigin().x(), transform.getOrigin().y(), transform.getOrigin().z();
+
+        Eigen::VectorXd encDisplFromLast;
+        Eigen::VectorXd pixDisplFromLast;
+
+        while (nh.ok() && !stopSign){
+            while (nh.ok()){
+                try{
+                    //*** TODO ***
+                    // overload detect function to detect a given image, and only capture images in this loop
+                    image1 = cam1.getCurrentImage();
+                    image2 = cam2.getCurrentImage();
+                    // cam1.saveCurrentImage("./along_cam", std::to_string(count)+".png");
+                    // cam2.saveCurrentImage("./along_usbcam", std::to_string(count)+".png");
+                    count++;
+
+                    listener.lookupTransform("/base_link", "/tool0",  ros::Time(0), transform);
+
+                    break;
+                    }
+                catch (tf::TransformException ex){
+                    // ROS_ERROR("%s",ex.what());
+                    }   
+            }
+            
+            detector_list[0].detect(image1);
+            toolPos1_temp = detector_list[0].getCenter();
+            detector_list[1].detect(image2);
+            toolPos2_temp = detector_list[1].getCenter();
+
+            if (cv::norm(cv::Mat(toolPos1_temp),cv::Mat(toolPos1))<=20.0){
+                toolPos1 = toolPos1_temp;
+            }
+
+            if (cv::norm(cv::Mat(toolPos2_temp),cv::Mat(toolPos2))<=20.0){
+                toolPos2 = toolPos2_temp;
+            }
+
+            toolPos << toolPos1.x, toolPos1.y, toolPos2.x, toolPos2.y;
+            robotPos << transform.getOrigin().x(), transform.getOrigin().y(), transform.getOrigin().z();
+
+            encDisplFromLast = robotPos-lastRobotPos;
+            std::cout << "robotPosition: " << robotPos <<std::endl;
+            std::cout << "encDisFromLast: " << encDisplFromLast << std::endl;
+
+            pixDisplFromLast = toolPos-lastToolPos;
+            std::cout << "toolPosition: " << toolPos << std::endl;
+            std::cout << "pixelDisFromLast: " << pixDisplFromLast << std::endl;
+
+            std::cout << "J: " << J << std::endl;
+            
+            // update J only if greater than a distance from the last update
+            if (pixDisplFromLast.norm()>= update_pix_step || encDisplFromLast.norm()>= update_enc_step){
+                updateJacobian(pixDisplFromLast, encDisplFromLast);
+                lastToolPos = toolPos;
+                lastRobotPos = robotPos;
+            } 
+
+            std::vector<double> J_full = J_flat;
+
+            Jmsg.data = J_flat;
+            J_pub.publish(Jmsg);
+            ros::spinOnce();
+            rate.sleep();
         }
-
-        if (cv::norm(cv::Mat(toolPos2_temp),cv::Mat(toolPos2))<=20.0){
-            toolPos2 = toolPos2_temp;
-        }
-
-        toolPos << toolPos1.x, toolPos1.y, toolPos2.x, toolPos2.y;
-        robotPos << transform.getOrigin().x(), transform.getOrigin().y(), transform.getOrigin().z();
-
-        encDisplFromLast = robotPos-lastRobotPos;
-        std::cout << "robotPosition: " << robotPos <<std::endl;
-        std::cout << "encDisFromLast: " << encDisplFromLast << std::endl;
-
-        pixDisplFromLast = toolPos-lastToolPos;
-        std::cout << "toolPosition: " << toolPos << std::endl;
-        std::cout << "pixelDisFromLast: " << pixDisplFromLast << std::endl;
-
-        std::cout << "J: " << J << std::endl;
-        
-        // update J only if greater than a distance from the last update
-        if (pixDisplFromLast.norm()>= update_pix_step || encDisplFromLast.norm()>= update_enc_step){
-            updateJacobian(pixDisplFromLast, encDisplFromLast);
-            lastToolPos = toolPos;
-            lastRobotPos = robotPos;
-        } 
-
-        std::vector<double> J_full = J_flat;
-
-        Jmsg.data = J_flat;
-        J_pub.publish(Jmsg);
-        ros::spinOnce();
-        rate.sleep();
     }
+
 }
 
 void visual_servo::JacobianUpdater::mainLoop(visual_servo::ImageCapturer& cam1, visual_servo::ImageCapturer& cam2, std::vector<visual_servo::ToolDetector> & detector_list){
     ros::Rate rate(10.0);
 
-    initializeJacobian(cam1, cam2, detector_list[0]);
-    initializeJacobianOri(cam1, cam2, detector_list);
-
-    std_msgs::Float64MultiArray Jmsg;
-    cv::Point toolPos1, toolPos2;
-    cv::Point tooltipPos1, tooltipPos2;
-    cv::Point toolframePos1, toolframePos2;
-
-    double roll, pitch, yaw;
-
-    cv::Mat image1, image2;
-
-    ROS_INFO("Jacobian initialized! Ready for Jacobian update.");
-    // loopup current robot pose
     while (nh.ok()){
-        try{
-            image1 = cam1.getCurrentImage();
-            image2 = cam2.getCurrentImage();
 
-            listener.lookupTransform("/base_link", "/tool0",  ros::Time(0), transform);
-            break;
-            }
-        catch (tf::TransformException ex){
-            // ROS_ERROR("%s",ex.what());
-            // rate.sleep();
-            }   
-    }
+        initializeJacobian(cam1, cam2, detector_list[0]);
+        initializeJacobianOri(cam1, cam2, detector_list);
 
-    detector_list[0].detect(image1);
-    toolPos1 = detector_list[0].getCenter();
-    detector_list[0].detect(image2);
-    toolPos2 = detector_list[0].getCenter();
+        stopSign = false;
 
-    detector_list[1].detect(image1);
-    tooltipPos1 = detector_list[1].getCenter();
-    detector_list[1].detect(image2);
-    tooltipPos2 = detector_list[1].getCenter();
+        std_msgs::Float64MultiArray Jmsg;
+        cv::Point2d toolPos1, toolPos2;
+        cv::Point2d tooltipPos1, tooltipPos2;
+        cv::Point2d toolframePos1, toolframePos2;
 
-    detector_list[2].detect(image1);
-    toolframePos1 = detector_list[2].getCenter();
-    detector_list[2].detect(image2);
-    toolframePos2 = detector_list[2].getCenter();
+        double roll, pitch, yaw;
 
-    lastToolPos << toolPos1.x, toolPos1.y, toolPos2.x, toolPos2.y;
-    lastRobotPos << transform.getOrigin().x(), transform.getOrigin().y(), transform.getOrigin().z();
+        cv::Mat image1, image2;
 
-    visual_servo::JacobianUpdater::getToolRot(lastToolRot, toolPos1, tooltipPos1, toolframePos1, toolPos2, tooltipPos2, toolframePos2);
-    tf::Matrix3x3(transform.getRotation()).getRPY(roll, pitch, yaw);
-    lastRobotRot << roll, pitch, yaw;
-
-    Eigen::VectorXd encDisplFromLast;
-    Eigen::VectorXd pixDisplFromLast;
-
-    Eigen::VectorXd encAngDisplFromLast;
-    Eigen::VectorXd pixAngDisplFromLast;
-
-    while ((nh.ok())){
+        ROS_INFO("Jacobian initialized! Ready for Jacobian update.");
+        // loopup current robot pose
         while (nh.ok()){
             try{
-                //*** TODO ***
-                // overload detect function to detect a given image, and only capture images in this loop
                 image1 = cam1.getCurrentImage();
                 image2 = cam2.getCurrentImage();
 
                 listener.lookupTransform("/base_link", "/tool0",  ros::Time(0), transform);
-
                 break;
                 }
             catch (tf::TransformException ex){
                 // ROS_ERROR("%s",ex.what());
+                // rate.sleep();
                 }   
         }
-        
+
         detector_list[0].detect(image1);
         toolPos1 = detector_list[0].getCenter();
         detector_list[0].detect(image2);
@@ -1126,59 +1172,105 @@ void visual_servo::JacobianUpdater::mainLoop(visual_servo::ImageCapturer& cam1, 
         detector_list[2].detect(image2);
         toolframePos2 = detector_list[2].getCenter();
 
-        toolPos << toolPos1.x, toolPos1.y, toolPos2.x, toolPos2.y;
-        robotPos << transform.getOrigin().x(), transform.getOrigin().y(), transform.getOrigin().z();
+        lastToolPos << toolPos1.x, toolPos1.y, toolPos2.x, toolPos2.y;
+        lastRobotPos << transform.getOrigin().x(), transform.getOrigin().y(), transform.getOrigin().z();
 
-        visual_servo::JacobianUpdater::getToolRot(toolRot, toolPos1, tooltipPos1, toolframePos1, toolPos2, tooltipPos2, toolframePos2);
+        visual_servo::JacobianUpdater::getToolRot(lastToolRot, toolPos1, tooltipPos1, toolframePos1, toolPos2, tooltipPos2, toolframePos2);
         tf::Matrix3x3(transform.getRotation()).getRPY(roll, pitch, yaw);
-        robotRot << roll, pitch, yaw;
+        lastRobotRot << roll, pitch, yaw;
 
-        encDisplFromLast = robotPos-lastRobotPos;
-        std::cout << "robotPosition: " << robotPos <<std::endl;
-        std::cout << "encDisFromLast: " << encDisplFromLast << std::endl;
+        Eigen::VectorXd encDisplFromLast;
+        Eigen::VectorXd pixDisplFromLast;
 
-        pixDisplFromLast = toolPos-lastToolPos;
-        std::cout << "toolPosition: " << toolPos << std::endl;
-        std::cout << "pixelDisFromLast: " << pixDisplFromLast << std::endl;
+        Eigen::VectorXd encAngDisplFromLast;
+        Eigen::VectorXd pixAngDisplFromLast;
 
-        encAngDisplFromLast = robotRot-lastRobotRot;
-        std::cout << "robotRotation: " << robotRot <<std::endl;
-        std::cout << "encDisFromLast: " << encAngDisplFromLast << std::endl;
+        while (nh.ok() && !stopSign){
+            while (nh.ok()){
+                try{
+                    //*** TODO ***
+                    // overload detect function to detect a given image, and only capture images in this loop
+                    image1 = cam1.getCurrentImage();
+                    image2 = cam2.getCurrentImage();
 
-        pixAngDisplFromLast = toolRot-lastToolRot;
-        std::cout << "toolRotation: " << toolRot << std::endl;
-        std::cout << "pixelAngDisFromLast: " << pixAngDisplFromLast << std::endl;
+                    listener.lookupTransform("/base_link", "/tool0",  ros::Time(0), transform);
 
-        std::cout << "J: " << J << std::endl;
+                    break;
+                    }
+                catch (tf::TransformException ex){
+                    // ROS_ERROR("%s",ex.what());
+                    }   
+            }
+            
+            detector_list[0].detect(image1);
+            toolPos1 = detector_list[0].getCenter();
+            detector_list[0].detect(image2);
+            toolPos2 = detector_list[0].getCenter();
 
-        std::cout << "J_ori: " << J_ori << std::endl;
-        
-        // update J only if greater than a distance from the last update
-        if (pixDisplFromLast.norm()>= update_pix_step || encDisplFromLast.norm()>= update_enc_step){
-            updateJacobian(pixDisplFromLast, encDisplFromLast);
-            lastToolPos = toolPos;
-            lastRobotPos = robotPos;
-        } 
+            detector_list[1].detect(image1);
+            tooltipPos1 = detector_list[1].getCenter();
+            detector_list[1].detect(image2);
+            tooltipPos2 = detector_list[1].getCenter();
 
-        // update J_ori only if greater than a distance from the last update
-        if (pixAngDisplFromLast.norm()>= update_pix_ang_step || encAngDisplFromLast.norm()>= update_enc_ang_step){
-            visual_servo::JacobianUpdater::limitAngDisp(pixAngDisplFromLast);
-            // visual_servo::JacobianUpdater::limitAngDisp(encAngDisplFromLast);
-            updateJacobian(pixAngDisplFromLast, encAngDisplFromLast, true);
-            lastToolRot = toolRot;
-            lastRobotRot = robotRot;
-        } 
+            detector_list[2].detect(image1);
+            toolframePos1 = detector_list[2].getCenter();
+            detector_list[2].detect(image2);
+            toolframePos2 = detector_list[2].getCenter();
 
-        std::vector<double> J_full = J_flat;
-        J_full.insert(J_full.end(), J_ori_flat.begin(), J_ori_flat.end());
-        // std::vector<double>::iterator ptr; 
-        // for (ptr=J_full.begin(); ptr<J_full.end(); ptr++){
-        //     std::cout << *ptr << "\n" << std::endl;
-        // }
-        Jmsg.data = J_full;
-        J_pub.publish(Jmsg);
-        ros::spinOnce();
-        rate.sleep();
+            toolPos << toolPos1.x, toolPos1.y, toolPos2.x, toolPos2.y;
+            robotPos << transform.getOrigin().x(), transform.getOrigin().y(), transform.getOrigin().z();
+
+            visual_servo::JacobianUpdater::getToolRot(toolRot, toolPos1, tooltipPos1, toolframePos1, toolPos2, tooltipPos2, toolframePos2);
+            tf::Matrix3x3(transform.getRotation()).getRPY(roll, pitch, yaw);
+            robotRot << roll, pitch, yaw;
+
+            encDisplFromLast = robotPos-lastRobotPos;
+            std::cout << "robotPosition: " << robotPos <<std::endl;
+            std::cout << "encDisFromLast: " << encDisplFromLast << std::endl;
+
+            pixDisplFromLast = toolPos-lastToolPos;
+            std::cout << "toolPosition: " << toolPos << std::endl;
+            std::cout << "pixelDisFromLast: " << pixDisplFromLast << std::endl;
+
+            encAngDisplFromLast = robotRot-lastRobotRot;
+            std::cout << "robotRotation: " << robotRot <<std::endl;
+            std::cout << "encDisFromLast: " << encAngDisplFromLast << std::endl;
+
+            pixAngDisplFromLast = toolRot-lastToolRot;
+            std::cout << "toolRotation: " << toolRot << std::endl;
+            std::cout << "pixelAngDisFromLast: " << pixAngDisplFromLast << std::endl;
+
+            std::cout << "J: " << J << std::endl;
+
+            std::cout << "J_ori: " << J_ori << std::endl;
+            
+            // update J only if greater than a distance from the last update
+            if (pixDisplFromLast.norm()>= update_pix_step || encDisplFromLast.norm()>= update_enc_step){
+                updateJacobian(pixDisplFromLast, encDisplFromLast);
+                lastToolPos = toolPos;
+                lastRobotPos = robotPos;
+            } 
+
+            // update J_ori only if greater than a distance from the last update
+            if (pixAngDisplFromLast.norm()>= update_pix_ang_step || encAngDisplFromLast.norm()>= update_enc_ang_step){
+                visual_servo::JacobianUpdater::limitAngDisp(pixAngDisplFromLast);
+                // visual_servo::JacobianUpdater::limitAngDisp(encAngDisplFromLast);
+                updateJacobian(pixAngDisplFromLast, encAngDisplFromLast, true);
+                lastToolRot = toolRot;
+                lastRobotRot = robotRot;
+            } 
+
+            std::vector<double> J_full = J_flat;
+            J_full.insert(J_full.end(), J_ori_flat.begin(), J_ori_flat.end());
+            // std::vector<double>::iterator ptr; 
+            // for (ptr=J_full.begin(); ptr<J_full.end(); ptr++){
+            //     std::cout << *ptr << "\n" << std::endl;
+            // }
+            Jmsg.data = J_full;
+            J_pub.publish(Jmsg);
+            ros::spinOnce();
+            rate.sleep();
+        }
     }
 }
 
@@ -1233,7 +1325,7 @@ void visual_servo::JacobianUpdater::poseMsg2Transform(tf::Transform& transform, 
     transform.setRotation(tf::Quaternion(pose.orientation.x, pose.orientation.y, pose.orientation.z, pose.orientation.w));
 }
 
-void visual_servo::JacobianUpdater::getToolRot(Eigen::VectorXd& toolRot, cv::Point& center1, cv::Point& tooltip1, cv::Point& frametip1, cv::Point& center2, cv::Point& tooltip2, cv::Point& frametip2){
+void visual_servo::JacobianUpdater::getToolRot(Eigen::VectorXd& toolRot, cv::Point2d& center1, cv::Point2d& tooltip1, cv::Point2d& frametip1, cv::Point2d& center2, cv::Point2d& tooltip2, cv::Point2d& frametip2){
     double theta11 = atan2((tooltip1-center1).y, (tooltip1-center1).x); 
     double theta12 = atan2((frametip1-center1).y, (frametip1-center1).x); 
     double theta21 = atan2((tooltip2-center2).y, (tooltip2-center2).x); 

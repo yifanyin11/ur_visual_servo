@@ -17,9 +17,9 @@ namespace visual_servo{
     private:
         ros::NodeHandle nh;
         cv::Mat image;
-        cv::Point tool_center;
-        cv::Point corner1;
-        cv::Point corner2;
+        cv::Point2d tool_center;
+        cv::Point2d corner1;
+        cv::Point2d corner2;
         cv::Scalar lower_hsv;
         cv::Scalar upper_hsv;
 
@@ -30,18 +30,17 @@ namespace visual_servo{
         friend class VisualServoController; 
         // constructor
         ToolDetector(ros::NodeHandle& nh, std::vector<int> hsv_range, bool dl_on=false);
+        ToolDetector(ros::NodeHandle& nh); // for dl version
         // destructor
         ~ToolDetector(){};
         // mutators
         // accessors
         cv::Mat getSourceImage(ImageCapturer& cam);
-        cv::Point getCenter();
+        cv::Point2d getCenter();
         // functions
         void firstDetect(ImageCapturer& cam);
         void detect(ImageCapturer& cam); // update source image with the cur frame from cam, perform detection using that image, update tool_center
         void detect(cv::Mat& img); 
-        void track(ImageCapturer& cam, double roir_width=0.25, double roir_height=0.25);
-        void track(cv::Mat& img, ImageCapturer& cam, double roir_width=0.25, double roir_height=0.25);
         void dlDetect(cv::Mat& img, cv::Point2d& drivertip, cv::Point2d& screwcup);
         void dlDetect(ImageCapturer& cam, cv::Point2d& drivertip, cv::Point2d& screwcup);
         void drawDetectRes(); 

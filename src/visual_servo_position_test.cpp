@@ -56,11 +56,11 @@ int main(int argc, char** argv){
     visual_servo::ImageCapturer cam1(nh, img_topic1);
     visual_servo::ImageCapturer cam2(nh, img_topic2);
 
-    // visual_servo::ToolDetector detector_tooltip_cam1(nh, std::vector<int>{165, 80, 200, 180, 190, 225}); // red night
-    // visual_servo::ToolDetector detector_tooltip_cam2(nh, std::vector<int>{0, 145, 140, 7, 190, 230});
+    // visual_servo::ToolDetector detector_tooltip_cam1(nh, std::vector<int>{165, 80, 200, 180, 190, 225}, true); // red night
+    // visual_servo::ToolDetector detector_tooltip_cam2(nh, std::vector<int>{0, 145, 140, 7, 190, 230}, true);
 
-    visual_servo::ToolDetector detector_tooltip_cam1(nh, std::vector<int>{165, 60, 200, 180, 190, 255}); // red day
-    visual_servo::ToolDetector detector_tooltip_cam2(nh, std::vector<int>{0, 135, 140, 10, 190, 255});
+    visual_servo::ToolDetector detector_tooltip_cam1(nh, std::vector<int>{165, 60, 200, 180, 190, 255}, true); // red day
+    visual_servo::ToolDetector detector_tooltip_cam2(nh, std::vector<int>{0, 135, 140, 10, 190, 255}, true);
 
     std::vector<visual_servo::ToolDetector> detector_list{detector_tooltip_cam1, detector_tooltip_cam2};
 
@@ -68,13 +68,15 @@ int main(int argc, char** argv){
     // visual_servo::ToolDetector detector_red(nh, std::vector<int>{0, 145, 100, 7, 190, 230});
 
     double tol = 3.0;
+    double pred_thred = 100.0;
 
-    visual_servo::VisualServoController servo_controller(nh, t_topic, tol);
+    visual_servo::VisualServoController servo_controller(nh, t_topic, true, tol, 0.0, pred_thred, 0.0);
     std::cout << "Done initialize servo controller" << std::endl;
 
     Eigen::VectorXd increment;
     while(nh.ok()&&(!servo_controller.stopSign())){
-        servo_controller.directionIncrement(increment, cam1, cam2, detector_list);
+        // servo_controller.directionIncrement(increment, cam1, cam2, detector_list); // dl off
+        servo_controller.directionIncrement(increment, cam1, cam2, detector_list[0], true); // dl on
         std::cout << "Done increment" << std::endl;
         target_pose.position.x = target_pose.position.x+increment(0);
         target_pose.position.y = target_pose.position.y+increment(1);
@@ -82,5 +84,4 @@ int main(int argc, char** argv){
         move_group_interface_arm.setPoseTarget(target_pose);
         move_group_interface_arm.move();
     }
-
 }
