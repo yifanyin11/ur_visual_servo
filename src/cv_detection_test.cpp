@@ -66,7 +66,7 @@ int main(int argc, char** argv){
     // visual_servo::ToolDetector detector_red(nh, std::vector<int>{0, 60, 140, 9, 190, 255});
     // visual_servo::ToolDetector detector_red(nh, std::vector<int>{175, 170, 80, 180, 190, 225});
 
-    int count = 600;
+    int count = 0;
     cv::Point2d tip1, tip2;
     // cv::Mat img;
     // img = cv::imread("/home/sanaria/Downloads/train1_91.png");

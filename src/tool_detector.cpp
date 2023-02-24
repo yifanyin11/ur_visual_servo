@@ -214,6 +214,7 @@ void visual_servo::ToolDetector::detect(cv::Mat& img){
 }
 
 void visual_servo::ToolDetector::dlDetect(cv::Mat& img, cv::Point2d& drivertip, cv::Point2d& screwcup){
+    std::string data_path = "/home/sanaria/users/tyler/failure_cases/";
     image = img.clone();
     cv_bridge::CvImage img_bridge;
     sensor_msgs::Image img_msg;
@@ -238,10 +239,23 @@ void visual_servo::ToolDetector::dlDetect(cv::Mat& img, cv::Point2d& drivertip, 
         drivertip.y = srv.response.coordinates[1];
         std::cout << drivertip.x << " " << drivertip.y << std::endl;
         std::cout << srv.response.confidence << std::endl;
+        if (drivertip.x==-1 || drivertip.y==-1){
+            int failure_count;
+            nh.getParam("/failure_count", failure_count);
+            cv::imwrite(data_path+"img"+std::to_string(failure_count)+".png", image);
+
+            std::string path = ros::package::getPath("ur_visual_servo");
+            YAML::Node config = YAML::LoadFile(path+"/config/training_logger.yaml");
+            config["failure_count"] = ++failure_count;
+            std::ofstream fout(path+"/config/training_logger.yaml");
+            fout << config;
+            nh.setParam("/failure_count", failure_count);
+        }
     }
 }
 
 void visual_servo::ToolDetector::dlDetect(ImageCapturer& cam, cv::Point2d& drivertip, cv::Point2d& screwcup){
+    std::string data_path = "/home/sanaria/users/tyler/failure_cases/";
     // update source image
     image = cam.getCurrentImage();
     // cv::namedWindow("img");
@@ -264,13 +278,25 @@ void visual_servo::ToolDetector::dlDetect(ImageCapturer& cam, cv::Point2d& drive
     if (!cli.call(srv)){
         ROS_ERROR("failed to call image capture in tool_detector");
         drivertip.x = -1.0;
-        drivertip.y = -1.0;
+        drivertip.y = -1.0;   
     }
     else{
         drivertip.x = srv.response.coordinates[0];
         drivertip.y = srv.response.coordinates[1];
         std::cout << drivertip.x << " " << drivertip.y << std::endl;
         std::cout << srv.response.confidence << std::endl;
+        if (drivertip.x==-1 || drivertip.y==-1){
+            int failure_count;
+            nh.getParam("/failure_count", failure_count);
+            cv::imwrite(data_path+"img"+std::to_string(failure_count)+".png", image);
+
+            std::string path = ros::package::getPath("ur_visual_servo");
+            YAML::Node config = YAML::LoadFile(path+"/config/training_logger.yaml");
+            config["failure_count"] = ++failure_count;
+            std::ofstream fout(path+"/config/training_logger.yaml");
+            fout << config;
+            nh.setParam("/failure_count", failure_count);
+        }
     }
 }
 

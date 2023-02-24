@@ -2,6 +2,7 @@
 #define TOOL_DETECTOR_H
 
 #include <ros/ros.h>
+#include <ros/package.h>
 #include <string>
 #include <opencv2/opencv.hpp>
 #include <opencv2/core.hpp>
@@ -11,6 +12,7 @@
 #include <sensor_msgs/image_encodings.h>
 #include <image_capturer.hpp>
 #include <dl_service/dl_detection.h>
+#include <yaml-cpp/yaml.h>
 
 namespace visual_servo{
     class ToolDetector{

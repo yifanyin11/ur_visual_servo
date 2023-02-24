@@ -33,6 +33,22 @@ int dof = 3;
 
 std::vector<double> targets_raw(num_targets*num_features*2);
 
+void transform2PoseMsg(tf::Transform& transform, geometry_msgs::Pose& pose){
+    pose.position.x = transform.getOrigin().x();
+    pose.position.y = transform.getOrigin().y();
+    pose.position.z = transform.getOrigin().z();
+
+    pose.orientation.x = transform.getRotation().x();
+    pose.orientation.y = transform.getRotation().y();
+    pose.orientation.z = transform.getRotation().z();
+    pose.orientation.w = transform.getRotation().w();
+}
+
+void poseMsg2Transform(geometry_msgs::Pose& pose, tf::Transform& transform){
+    transform.setOrigin(tf::Vector3(pose.position.x, pose.position.y, pose.position.z));
+    transform.setRotation(tf::Quaternion(pose.orientation.x, pose.orientation.y, pose.orientation.z, pose.orientation.w));
+}
+
 void home(ros::NodeHandle& nh){
     ros::AsyncSpinner spinner(1);
     spinner.start();
@@ -76,6 +92,8 @@ void home(ros::NodeHandle& nh){
 }
 
 void screw(ros::NodeHandle& nh){
+    double in_dis = 0.003; 
+
     ros::AsyncSpinner spinner(1);
     spinner.start();
     ros::Rate rate(1000);
@@ -86,13 +104,41 @@ void screw(ros::NodeHandle& nh){
     moveit::planning_interface::MoveGroupInterface::Plan my_plan;
     const robot_state::JointModelGroup* joint_model_group = move_group.getCurrentState()->getJointModelGroup(PLANNING_GROUP);
 
+    move_group.setMaxVelocityScalingFactor(0.001);
+    move_group.setMaxAccelerationScalingFactor(0.001);
+
+    // move inside
+    geometry_msgs::PoseStamped current_pose_stamped;
+    current_pose_stamped = move_group.getCurrentPose("tool0");
+
+    // define target pose and initialize it as current pose
+    geometry_msgs::Pose current_pose, target_pose;
+    tf::Transform current_transform, in_transform, target_transform;
+    current_pose.orientation = current_pose_stamped.pose.orientation;
+    current_pose.position = current_pose_stamped.pose.position;
+
+    poseMsg2Transform(current_pose, current_transform);
+
+    in_transform.setOrigin(tf::Vector3(0.0, 0.0, in_dis));
+    in_transform.setRotation(tf::Quaternion::getIdentity());
+    target_transform = current_transform*in_transform;
+
+    transform2PoseMsg(target_transform, target_pose);
+
+    move_group.setPoseTarget(target_pose);
+
+    bool success = (move_group.plan(my_plan) == moveit::planning_interface::MoveItErrorCode::SUCCESS);
+    ROS_INFO_NAMED("update_image_J", "Visualizing plan (pose goal) %s", success ? "" : "FAILED");
+    move_group.move();
+
+    // screw
+    move_group.setMaxVelocityScalingFactor(0.01);
+    move_group.setMaxAccelerationScalingFactor(0.01);
+
     moveit::core::RobotStatePtr current_state =  move_group.getCurrentState();
     std::vector<double> joint_group_positions;
     const std::vector<std::string> joint_names = joint_model_group->getActiveJointModelNames();
     current_state->copyJointGroupPositions(joint_model_group, joint_group_positions);
-
-    move_group.setMaxVelocityScalingFactor(0.02);
-    move_group.setMaxAccelerationScalingFactor(0.01);
 
     for (int i=0; i<joint_names.size(); ++i){
         if (joint_names[i]=="wrist_3_joint"){
@@ -106,7 +152,7 @@ void screw(ros::NodeHandle& nh){
     move_group.setJointValueTarget(joint_group_positions);
 
     // plan 
-    bool success = (move_group.plan(my_plan) == moveit::planning_interface::MoveItErrorCode::SUCCESS);
+    success = (move_group.plan(my_plan) == moveit::planning_interface::MoveItErrorCode::SUCCESS);
     ROS_INFO_NAMED("robot_homing", "Visualizing plan (pose goal) %s", success ? "" : "FAILED");
 
     //move the robot
@@ -186,126 +232,129 @@ int main(int argc, char** argv){
     z = target_pose.position.z;
     tf::Quaternion q_target;
     tf::Transform transform_target;
-    visual_servo::JacobianUpdater::poseMsg2Transform(transform_target, target_pose);
+    poseMsg2Transform(target_pose, transform_target);
     tf::Matrix3x3(transform_target.getRotation()).getRPY(roll, pitch, yaw);
 
-    // image topics
-    std::string img_topic1 = "/ptzcam/image_raw";
-    std::string img_topic2 = "/webcam/image_raw";
+    // ************ test only
+    screw(nh);
 
-    // cameras
-    visual_servo::ImageCapturer cam1(nh, img_topic1);
-    visual_servo::ImageCapturer cam2(nh, img_topic2);
+    // // image topics
+    // std::string img_topic1 = "/ptzcam/image_raw";
+    // std::string img_topic2 = "/webcam/image_raw";
 
-    // detectors
-    visual_servo::ToolDetector detector_tool(nh);
+    // // cameras
+    // visual_servo::ImageCapturer cam1(nh, img_topic1);
+    // visual_servo::ImageCapturer cam2(nh, img_topic2);
 
-    visual_servo::ToolDetector detector_ori_cam1(nh, std::vector<int>{100, 170, 140, 109, 255, 255}); // blue night
-    visual_servo::ToolDetector detector_ori_cam2(nh, std::vector<int>{100, 100, 140, 109, 255, 179});
+    // // detectors
+    // visual_servo::ToolDetector detector_tool(nh);
 
-    std::vector<visual_servo::ToolDetector> detector_list{detector_tool, detector_ori_cam1, detector_ori_cam2};
+    // visual_servo::ToolDetector detector_ori_cam1(nh, std::vector<int>{100, 170, 140, 109, 255, 255}); // blue night
+    // visual_servo::ToolDetector detector_ori_cam2(nh, std::vector<int>{100, 100, 140, 109, 255, 179});
 
-    // take images
-    cv::Mat img_target1 = cam1.getCurrentImage();
-    cv::Mat img_target2 = cam2.getCurrentImage();
+    // std::vector<visual_servo::ToolDetector> detector_list{detector_tool, detector_ori_cam1, detector_ori_cam2};
 
-    // servo controller
-    std::unique_ptr<visual_servo::VisualServoController> servo_controller;
+    // // take images
+    // cv::Mat img_target1 = cam1.getCurrentImage();
+    // cv::Mat img_target2 = cam2.getCurrentImage();
 
-    Eigen::VectorXd increment;
-    increment.resize(dof);
+    // // servo controller
+    // std::unique_ptr<visual_servo::VisualServoController> servo_controller;
 
-    std::string name1, name2;
+    // Eigen::VectorXd increment;
+    // increment.resize(dof);
 
-    // img saving path
-    std::string img_path = data_root+"img/";
+    // std::string name1, name2;
 
-    // msgs
-    std_msgs::Bool stopmsg;
-    stopmsg.data = true;
+    // // img saving path
+    // std::string img_path = data_root+"img/";
 
-    // targets
-    Eigen::VectorXd target_full;
-    target_full.resize(2*num_features);
+    // // msgs
+    // std_msgs::Bool stopmsg;
+    // stopmsg.data = true;
 
-    // loop for num_exps times
-    for (int j=0; j<num_exps; ++j){
-        for (int i=0; i<num_targets; ++i){ 
-            std::cout << "Homing ..." << std::endl;
-            // go to home pos
-            home(nh);
-            // loop until converges
-            Eigen::VectorXd increment;
-            increment.resize(dof);
+    // // targets
+    // Eigen::VectorXd target_full;
+    // target_full.resize(2*num_features);
 
-            // setup current target vector
-            std::vector<double> temp(targets_raw.begin() + 2*num_features*i, targets_raw.begin() + 2*num_features*(i+1));
-            std::cout << temp.size() << std::endl;
-            flat2eigenVec(target_full, temp);
+    // // loop for num_exps times
+    // for (int j=0; j<num_exps; ++j){
+    //     for (int i=0; i<num_targets; ++i){ 
+    //         std::cout << "Homing ..." << std::endl;
+    //         // go to home pos
+    //         home(nh);
+    //         // loop until converges
+    //         Eigen::VectorXd increment;
+    //         increment.resize(dof);
 
-            std::cout << "target_full: \n" << target_full << std::endl;
+    //         // setup current target vector
+    //         std::vector<double> temp(targets_raw.begin() + 2*num_features*i, targets_raw.begin() + 2*num_features*(i+1));
+    //         std::cout << temp.size() << std::endl;
+    //         flat2eigenVec(target_full, temp);
 
-            // orientation servo
-            if (!(j==0&&i==0)){
-                // initialize J for ori
-                ros::Time begin = ros::Time::now();
-                ros::Duration duration = ros::Duration(0.5); 
-                ros::Time end = begin + duration;
-                // publish for certain period of time
-                while(ros::Time::now() < end){
-                    G_stop_pub.publish(stopmsg);
-                }
-                ros::Duration(0.5).sleep(); 
-            }
+    //         std::cout << "target_full: \n" << target_full << std::endl;
 
-            servo_controller.reset(new visual_servo::VisualServoController(nh, target_full, true, tol_pos, tol_ori, pred_thred, pred_thred_ori));
+    //         // orientation servo
+    //         if (!(j==0&&i==0)){
+    //             // initialize J for ori
+    //             ros::Time begin = ros::Time::now();
+    //             ros::Duration duration = ros::Duration(0.5); 
+    //             ros::Time end = begin + duration;
+    //             // publish for certain period of time
+    //             while(ros::Time::now() < end){
+    //                 G_stop_pub.publish(stopmsg);
+    //             }
+    //             ros::Duration(0.5).sleep(); 
+    //         }
+
+    //         servo_controller.reset(new visual_servo::VisualServoController(nh, target_full, true, tol_pos, tol_ori, pred_thred, pred_thred_ori));
             
-            while(nh.ok()&&(!servo_controller->stopSign())){
-                servo_controller->uniOriDirectionIncrement(increment, cam1, cam2, detector_list, true, true);
-                std::cout << "Done increment" << std::endl;
+    //         while(nh.ok()&&(!servo_controller->stopSign())){
+    //             servo_controller->uniOriDirectionIncrement(increment, cam1, cam2, detector_list, true, true);
+    //             std::cout << "Done increment" << std::endl;
 
-                transform_target.setOrigin(tf::Vector3(x, y, z));
+    //             transform_target.setOrigin(tf::Vector3(x, y, z));
 
-                roll = roll+increment(0);
-                pitch = pitch+increment(1);
-                yaw = yaw+increment(2);
-                q_target.setRPY(roll, pitch, yaw);
-                q_target.normalize();
-                transform_target.setRotation(q_target);
+    //             roll = roll+increment(0);
+    //             pitch = pitch+increment(1);
+    //             yaw = yaw+increment(2);
+    //             q_target.setRPY(roll, pitch, yaw);
+    //             q_target.normalize();
+    //             transform_target.setRotation(q_target);
 
-                visual_servo::JacobianUpdater::transform2PoseMsg(transform_target, target_pose);
+    //             visual_servo::JacobianUpdater::transform2PoseMsg(transform_target, target_pose);
 
-                move_group_interface_arm.setPoseTarget(target_pose);
-                move_group_interface_arm.move();
-            }
+    //             move_group_interface_arm.setPoseTarget(target_pose);
+    //             move_group_interface_arm.move();
+    //         }
 
-            servo_controller.reset(new visual_servo::VisualServoController(nh, target_full, true, tol_pos, tol_ori, pred_thred, pred_thred_ori));
+    //         servo_controller.reset(new visual_servo::VisualServoController(nh, target_full, true, tol_pos, tol_ori, pred_thred, pred_thred_ori));
 
-            // position servo
-            while(nh.ok()&&(!servo_controller->stopSign())){
-                // servo_controller->directionIncrement(increment, cam1, cam2, detector_list); // dl off
-                servo_controller->directionIncrement(increment, cam1, cam2, detector_tool, true); // dl on
-                std::cout << "Done increment" << std::endl;
-                target_pose.position.x = target_pose.position.x+increment(0);
-                target_pose.position.y = target_pose.position.y+increment(1);
-                target_pose.position.z = target_pose.position.z+increment(2);
-                move_group_interface_arm.setPoseTarget(target_pose);
-                move_group_interface_arm.move();
-            }
-            // take and save images
-            cv::Mat img_target1 = cam1.getCurrentImage();
-            cv::Mat img_target2 = cam2.getCurrentImage();
-            name1 = img_path+"cam1"+std::to_string(i)+".png";
-            name2 = img_path+"cam2"+std::to_string(i)+".png";
-            cv::imwrite(name1, img_target1);
-            cv::imwrite(name2, img_target2);
+    //         // position servo
+    //         while(nh.ok()&&(!servo_controller->stopSign())){
+    //             // servo_controller->directionIncrement(increment, cam1, cam2, detector_list); // dl off
+    //             servo_controller->directionIncrement(increment, cam1, cam2, detector_tool, true); // dl on
+    //             std::cout << "Done increment" << std::endl;
+    //             target_pose.position.x = target_pose.position.x+increment(0);
+    //             target_pose.position.y = target_pose.position.y+increment(1);
+    //             target_pose.position.z = target_pose.position.z+increment(2);
+    //             move_group_interface_arm.setPoseTarget(target_pose);
+    //             move_group_interface_arm.move();
+    //         }
+    //         // take and save images
+    //         cv::Mat img_target1 = cam1.getCurrentImage();
+    //         cv::Mat img_target2 = cam2.getCurrentImage();
+    //         name1 = img_path+"cam1"+std::to_string(i)+".png";
+    //         name2 = img_path+"cam2"+std::to_string(i)+".png";
+    //         cv::imwrite(name1, img_target1);
+    //         cv::imwrite(name2, img_target2);
 
-            // screwing
-            ROS_INFO("Start screwing ...");
-            screw(nh);
-        }
-        // data_logger.close();
-    }
+    //         // screwing
+    //         ROS_INFO("Start screwing ...");
+    //         screw(nh);
+    //     }
+    //     // data_logger.close();
+    // }
 
     ros::shutdown();
     return 0;

@@ -1,0 +1,7 @@
+<?xml version="1.0"?>
+
+<launch>
+  	<rosparam command="load" file="$(find ur_visual_servo)/config/config.yaml" />
+
+	<rosparam command="load" file="$(find ur_visual_servo)/config/training_logger.yaml" />
+</launch>

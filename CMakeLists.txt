@@ -130,7 +130,7 @@ add_library(image_capturer src/image_capturer.cpp)
 target_link_libraries(image_capturer ${catkin_LIBRARIES} ${Boost_LIBRARIES} ${OpenCV_LIBRARIES})
 
 add_library(tool_detector src/tool_detector.cpp)
-target_link_libraries(tool_detector ${catkin_LIBRARIES} ${Boost_LIBRARIES} ${OpenCV_LIBRARIES})
+target_link_libraries(tool_detector ${catkin_LIBRARIES} ${Boost_LIBRARIES} ${OpenCV_LIBRARIES} yaml-cpp)
 
 add_library(Jacobian_updater src/Jacobian_updater.cpp)
 target_link_libraries(Jacobian_updater ${catkin_LIBRARIES} ${Boost_LIBRARIES} ${OpenCV_LIBRARIES})
@@ -185,6 +185,9 @@ target_link_libraries(auto_exp image_capturer tool_detector Jacobian_updater vis
 
 add_executable(label_target_publisher src/label_target_publisher.cpp)
 target_link_libraries(label_target_publisher image_capturer visual_servo_controller pixel_picker ${catkin_LIBRARIES} ${Boost_LIBRARIES})
+
+add_executable(label_targets_publisher src/label_targets_publisher.cpp)
+target_link_libraries(label_targets_publisher image_capturer visual_servo_controller pixel_picker ${catkin_LIBRARIES} ${Boost_LIBRARIES})
 
 ## Add cmake target dependencies of the executable
 ## same as for the library above
